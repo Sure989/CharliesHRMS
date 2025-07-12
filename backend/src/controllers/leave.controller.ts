@@ -1,0 +1,469 @@
+import { Request, Response } from 'express';
+import { prisma } from '../index';
+import {
+  calculateWorkingDays,
+  validateLeaveRequest,
+  updateLeaveBalance,
+  processLeaveRequestDecision,
+  initializeEmployeeLeaveBalances,
+} from '../services/leaveManagement.service';
+
+/**
+ * Get all leave types for a tenant
+ * @route GET /api/leave/types
+ */
+export const getLeaveTypes = async (req: Request, res: Response) => {
+  try {
+    if (!req.tenantId) {
+      return res.status(401).json({
+        status: 'error',
+        message: 'Tenant ID is required',
+      });
+    }
+
+    const leaveTypes = await prisma.leaveType.findMany({
+      where: { tenantId: req.tenantId, isActive: true },
+      include: {
+        _count: {
+          select: {
+            leaveRequests: true,
+            leaveBalances: true,
+          },
+        },
+      },
+      orderBy: { name: 'asc' },
+    });
+
+    return res.status(200).json({
+      status: 'success',
+      data: { leaveTypes },
+    });
+  } catch (error) {
+    console.error('Get leave types error:', error);
+    return res.status(500).json({
+      status: 'error',
+      message: 'Internal server error while fetching leave types',
+    });
+  }
+};
+
+/**
+ * Create a new leave type
+ * @route POST /api/leave/types
+ */
+export const createLeaveType = async (req: Request, res: Response) => {
+  try {
+    const { name, code, description, color } = req.body;
+
+    if (!req.tenantId) {
+      return res.status(401).json({
+        status: 'error',
+        message: 'Tenant ID is required',
+      });
+    }
+
+    if (!name || !code) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Name and code are required',
+      });
+    }
+
+    // Check if leave type with same code already exists
+    const existingLeaveType = await prisma.leaveType.findFirst({
+      where: {
+        code,
+        tenantId: req.tenantId,
+      },
+    });
+
+    if (existingLeaveType) {
+      return res.status(409).json({
+        status: 'error',
+        message: 'Leave type with this code already exists',
+      });
+    }
+
+    const leaveType = await prisma.leaveType.create({
+      data: {
+        name,
+        code,
+        description,
+        color,
+        tenantId: req.tenantId,
+      },
+    });
+
+    return res.status(201).json({
+      status: 'success',
+      message: 'Leave type created successfully',
+      data: { leaveType },
+    });
+  } catch (error) {
+    console.error('Create leave type error:', error);
+    return res.status(500).json({
+      status: 'error',
+      message: 'Internal server error while creating leave type',
+    });
+  }
+};
+
+/**
+ * Submit a leave request
+ * @route POST /api/leave/requests
+ */
+export const submitLeaveRequest = async (req: Request, res: Response) => {
+  try {
+    const { employeeId, leaveTypeId, startDate, endDate, reason } = req.body;
+
+    if (!req.tenantId) {
+      return res.status(401).json({
+        status: 'error',
+        message: 'Tenant ID is required',
+      });
+    }
+
+    if (!employeeId || !leaveTypeId || !startDate || !endDate) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Employee ID, leave type ID, start date, and end date are required',
+      });
+    }
+
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+
+    // Validate leave request
+    const validation = await validateLeaveRequest(
+      employeeId,
+      leaveTypeId,
+      start,
+      end,
+      req.tenantId
+    );
+
+    if (!validation.isValid) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Leave request validation failed',
+        errors: validation.errors,
+      });
+    }
+
+    // Calculate working days
+    const totalDays = await calculateWorkingDays(start, end, req.tenantId);
+
+    const leaveRequest = await prisma.leaveRequest.create({
+      data: {
+        employeeId,
+        leaveTypeId,
+        startDate: start,
+        endDate: end,
+        totalDays,
+        reason,
+        tenantId: req.tenantId,
+      },
+      include: {
+        employee: {
+          select: {
+            id: true,
+            employeeNumber: true,
+            firstName: true,
+            lastName: true,
+          },
+        },
+        leaveType: {
+          select: {
+            id: true,
+            name: true,
+            code: true,
+          },
+        },
+      },
+    });
+
+    // Update leave balance
+    const year = start.getFullYear();
+    await updateLeaveBalance(employeeId, leaveTypeId, year, req.tenantId);
+
+    return res.status(201).json({
+      status: 'success',
+      message: 'Leave request submitted successfully',
+      data: { leaveRequest },
+    });
+  } catch (error) {
+    console.error('Submit leave request error:', error);
+    return res.status(500).json({
+      status: 'error',
+      message: 'Internal server error while submitting leave request',
+    });
+  }
+};
+
+/**
+ * Get leave requests (with filtering)
+ * @route GET /api/leave/requests
+ */
+export const getLeaveRequests = async (req: Request, res: Response) => {
+  try {
+    const { employeeId, status, leaveTypeId, startDate, endDate } = req.query;
+
+    if (!req.tenantId) {
+      return res.status(401).json({
+        status: 'error',
+        message: 'Tenant ID is required',
+      });
+    }
+
+    const where: any = { tenantId: req.tenantId };
+
+    if (employeeId) where.employeeId = employeeId;
+    if (status) where.status = status;
+    if (leaveTypeId) where.leaveTypeId = leaveTypeId;
+    if (startDate && endDate) {
+      where.startDate = { gte: new Date(startDate as string) };
+      where.endDate = { lte: new Date(endDate as string) };
+    }
+
+    const leaveRequests = await prisma.leaveRequest.findMany({
+      where,
+      include: {
+        employee: {
+          select: {
+            id: true,
+            employeeNumber: true,
+            firstName: true,
+            lastName: true,
+            department: { select: { name: true } },
+            branch: { select: { name: true } },
+          },
+        },
+        leaveType: {
+          select: {
+            id: true,
+            name: true,
+            code: true,
+            color: true,
+          },
+        },
+      },
+      orderBy: { appliedAt: 'desc' },
+    });
+
+    return res.status(200).json({
+      status: 'success',
+      data: { leaveRequests },
+    });
+  } catch (error) {
+    console.error('Get leave requests error:', error);
+    return res.status(500).json({
+      status: 'error',
+      message: 'Internal server error while fetching leave requests',
+    });
+  }
+};
+
+/**
+ * Approve or reject a leave request
+ * @route PUT /api/leave/requests/:id/decision
+ */
+export const processLeaveRequest = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { decision, reason } = req.body;
+
+    if (!req.tenantId || !req.user?.userId) {
+      return res.status(401).json({
+        status: 'error',
+        message: 'Authentication required',
+      });
+    }
+
+    if (!decision || !['APPROVED', 'REJECTED'].includes(decision)) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Valid decision (APPROVED or REJECTED) is required',
+      });
+    }
+
+    await processLeaveRequestDecision(id, decision, req.user.userId, reason, req.tenantId);
+
+    const updatedRequest = await prisma.leaveRequest.findUnique({
+      where: { id },
+      include: {
+        employee: {
+          select: {
+            id: true,
+            employeeNumber: true,
+            firstName: true,
+            lastName: true,
+          },
+        },
+        leaveType: {
+          select: {
+            id: true,
+            name: true,
+            code: true,
+          },
+        },
+      },
+    });
+
+    return res.status(200).json({
+      status: 'success',
+      message: `Leave request ${decision.toLowerCase()} successfully`,
+      data: { leaveRequest: updatedRequest },
+    });
+  } catch (error) {
+    console.error('Process leave request error:', error);
+    return res.status(500).json({
+      status: 'error',
+      message: error instanceof Error ? error.message : 'Internal server error while processing leave request',
+    });
+  }
+};
+
+/**
+ * Get leave balances for an employee
+ * @route GET /api/leave/balances/:employeeId
+ */
+export const getLeaveBalances = async (req: Request, res: Response) => {
+  try {
+    const { employeeId } = req.params;
+    const { year } = req.query;
+
+    if (!req.tenantId) {
+      return res.status(401).json({
+        status: 'error',
+        message: 'Tenant ID is required',
+      });
+    }
+
+    const currentYear = year ? parseInt(year as string) : new Date().getFullYear();
+
+    const leaveBalances = await prisma.leaveBalance.findMany({
+      where: {
+        employeeId,
+        year: currentYear,
+        tenantId: req.tenantId,
+      },
+      include: {
+        leaveType: {
+          select: {
+            id: true,
+            name: true,
+            code: true,
+            color: true,
+          },
+        },
+      },
+      orderBy: {
+        leaveType: {
+          name: 'asc',
+        },
+      },
+    });
+
+    return res.status(200).json({
+      status: 'success',
+      data: { leaveBalances, year: currentYear },
+    });
+  } catch (error) {
+    console.error('Get leave balances error:', error);
+    return res.status(500).json({
+      status: 'error',
+      message: 'Internal server error while fetching leave balances',
+    });
+  }
+};
+
+/**
+ * Get holidays for a tenant
+ * @route GET /api/leave/holidays
+ */
+export const getHolidays = async (req: Request, res: Response) => {
+  try {
+    const { year } = req.query;
+
+    if (!req.tenantId) {
+      return res.status(401).json({
+        status: 'error',
+        message: 'Tenant ID is required',
+      });
+    }
+
+    const currentYear = year ? parseInt(year as string) : new Date().getFullYear();
+    const startOfYear = new Date(currentYear, 0, 1);
+    const endOfYear = new Date(currentYear, 11, 31);
+
+    const holidays = await prisma.holiday.findMany({
+      where: {
+        tenantId: req.tenantId,
+        isActive: true,
+        date: {
+          gte: startOfYear,
+          lte: endOfYear,
+        },
+      },
+      orderBy: { date: 'asc' },
+    });
+
+    return res.status(200).json({
+      status: 'success',
+      data: { holidays, year: currentYear },
+    });
+  } catch (error) {
+    console.error('Get holidays error:', error);
+    return res.status(500).json({
+      status: 'error',
+      message: 'Internal server error while fetching holidays',
+    });
+  }
+};
+
+/**
+ * Create a holiday
+ * @route POST /api/leave/holidays
+ */
+export const createHoliday = async (req: Request, res: Response) => {
+  try {
+    const { name, date, type, description, isRecurring } = req.body;
+
+    if (!req.tenantId) {
+      return res.status(401).json({
+        status: 'error',
+        message: 'Tenant ID is required',
+      });
+    }
+
+    if (!name || !date) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Name and date are required',
+      });
+    }
+
+    const holiday = await prisma.holiday.create({
+      data: {
+        name,
+        date: new Date(date),
+        type: type || 'PUBLIC',
+        description,
+        isRecurring: isRecurring || false,
+        tenantId: req.tenantId,
+      },
+    });
+
+    return res.status(201).json({
+      status: 'success',
+      message: 'Holiday created successfully',
+      data: { holiday },
+    });
+  } catch (error) {
+    console.error('Create holiday error:', error);
+    return res.status(500).json({
+      status: 'error',
+      message: 'Internal server error while creating holiday',
+    });
+  }
+};
