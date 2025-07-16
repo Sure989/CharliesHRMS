@@ -10,7 +10,7 @@ import { useState, useEffect } from 'react';
 import { Check, X, Eye, DollarSign, Clock, ArrowRight } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { formatCurrencyCompact } from '@/utils/currency';
-import { api } from '@/services/unifiedApi';
+import { salaryAdvanceService } from '@/services/api/salaryAdvance.service';
 import { SalaryAdvanceRequest } from '@/types/types';
 import { PayrollEngine } from '@/services/payrollEngine';
 import { PayrollDataService } from '@/services/payrollDataService';
@@ -29,8 +29,41 @@ const OperationsSalaryAdvances = () => {
     const loadSalaryAdvanceRequests = async () => {
       try {
         setLoading(true);
-        const requests = await api.data.getSalaryAdvanceRequests('operations');
-        setAdvances(requests);
+        const response = await salaryAdvanceService.getSalaryAdvanceRequests({ department: 'operations' });
+        // Defensive: handle both { data: [] } and { requests: [] }
+        const advancesArray = Array.isArray(response?.data)
+          ? response.data
+          : Array.isArray((response as any)?.requests)
+            ? (response as any).requests
+            : [];
+
+        const advances = advancesArray.map((apiReq: any) => ({
+          id: apiReq.id,
+          employeeId: apiReq.employeeId,
+          employeeName: apiReq.employee?.firstName && apiReq.employee?.lastName ? `${apiReq.employee.firstName} ${apiReq.employee.lastName}` : '',
+          branch: apiReq.employee?.department || '',
+          amount: apiReq.requestedAmount,
+          disbursementMethod: apiReq.disbursementMethod || '',
+          reason: apiReq.reason,
+          status: apiReq.status,
+          requestDate: apiReq.requestDate || apiReq.createdAt,
+          opsManagerName: apiReq.approver ? `${apiReq.approver.firstName} ${apiReq.approver.lastName}` : '',
+          opsInitialDate: apiReq.createdAt,
+          opsInitialComments: '',
+          hrReviewerName: '',
+          hrReviewDate: '',
+          hrDecision: '',
+          hrComments: '',
+          opsFinalDate: apiReq.updatedAt,
+          opsFinalDecision: '',
+          opsFinalComments: '',
+          currentStep: apiReq.status,
+          payrollIntegration: apiReq.payrollIntegration || {},
+          repaymentDetails: apiReq.repaymentDetails || {},
+          hrEligibilityDetails: apiReq.hrEligibilityDetails || {},
+          workflowHistory: [] as import('@/types/types').WorkflowStep[],
+        }));
+        setAdvances(advances);
       } catch (error) {
         console.error('Failed to load salary advance requests:', error);
         toast({
@@ -65,8 +98,7 @@ const OperationsSalaryAdvances = () => {
   const handleApproval = async (advanceId: number, approved: boolean) => {
     try {
       if (approved) {
-        await api.data.approveSalaryAdvanceRequest(advanceId, 'operations', reviewComments);
-        
+        await salaryAdvanceService.approveSalaryAdvanceRequest({ requestId: String(advanceId), approverId: 'operations', comments: reviewComments });
         setAdvances(prev => prev.map(advance => 
           advance.id === advanceId 
             ? { 
@@ -79,14 +111,12 @@ const OperationsSalaryAdvances = () => {
               }
             : advance
         ));
-
         toast({
           title: "Request Approved",
           description: "Salary advance request has been approved and forwarded to HR for eligibility review."
         });
       } else {
-        await api.data.rejectSalaryAdvanceRequest(advanceId, 'operations', reviewComments);
-        
+        await salaryAdvanceService.rejectSalaryAdvanceRequest({ requestId: String(advanceId), approverId: 'operations', rejectionReason: reviewComments });
         setAdvances(prev => prev.map(advance => 
           advance.id === advanceId 
             ? { 
@@ -99,7 +129,6 @@ const OperationsSalaryAdvances = () => {
               }
             : advance
         ));
-
         toast({
           title: "Request Rejected",
           description: "Salary advance request has been rejected."
@@ -121,8 +150,7 @@ const OperationsSalaryAdvances = () => {
   const handleFinalApproval = async (advanceId: number, approved: boolean) => {
     try {
       if (approved) {
-        await api.data.approveSalaryAdvanceRequest(advanceId, 'operations', reviewComments);
-        
+        await salaryAdvanceService.approveSalaryAdvanceRequest({ requestId: String(advanceId), approverId: 'operations', comments: reviewComments });
         setAdvances(prev => prev.map(advance => 
           advance.id === advanceId 
             ? { 
@@ -135,14 +163,12 @@ const OperationsSalaryAdvances = () => {
               }
             : advance
         ));
-
         toast({
           title: "Final Approval Granted",
           description: "Salary advance request has been given final approval and is ready for disbursement."
         });
       } else {
-        await api.data.rejectSalaryAdvanceRequest(advanceId, 'operations', reviewComments);
-        
+        await salaryAdvanceService.rejectSalaryAdvanceRequest({ requestId: String(advanceId), approverId: 'operations', rejectionReason: reviewComments });
         setAdvances(prev => prev.map(advance => 
           advance.id === advanceId 
             ? { 
@@ -155,7 +181,6 @@ const OperationsSalaryAdvances = () => {
               }
             : advance
         ));
-
         toast({
           title: "Final Approval Denied",
           description: "Salary advance request has been denied final approval."
@@ -223,8 +248,6 @@ const OperationsSalaryAdvances = () => {
     <DashboardLayout title="Salary Advance Reviews - Operations">
       <div className="space-y-6">
         <div>
-          <h2 className="text-2xl font-bold">Operations Salary Advance Review</h2>
-          <p className="text-muted-foreground">Initial review and final approval of team salary advance requests</p>
         </div>
 
         <div className="grid gap-4 md:grid-cols-4">
@@ -282,7 +305,6 @@ const OperationsSalaryAdvances = () => {
               <TableHeader>
                 <TableRow>
                   <TableHead>Employee</TableHead>
-                  <TableHead>Branch</TableHead>
                   <TableHead>Amount</TableHead>
                   <TableHead>Reason</TableHead>
                   <TableHead>Request Date</TableHead>
@@ -300,7 +322,6 @@ const OperationsSalaryAdvances = () => {
                         <div className="text-sm text-muted-foreground">ID: {advance.employeeId}</div>
                       </div>
                     </TableCell>
-                    <TableCell>{advance.branch}</TableCell>
                     <TableCell>{formatCurrencyCompact(advance.amount)}</TableCell>
                     <TableCell className="max-w-xs truncate">{advance.reason}</TableCell>
                     <TableCell>{new Date(advance.requestDate).toLocaleDateString()}</TableCell>
@@ -338,7 +359,7 @@ const OperationsSalaryAdvances = () => {
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
-                        {advance.status === 'pending_ops_initial' && (
+                        {advance.status === 'PENDING' && (
                           <>
                             <Button
                               size="sm"
@@ -355,26 +376,6 @@ const OperationsSalaryAdvances = () => {
                             >
                               <X className="h-4 w-4 mr-1" />
                               Reject
-                            </Button>
-                          </>
-                        )}
-                        {advance.status === 'hr_approved' && (
-                          <>
-                            <Button
-                              size="sm"
-                              onClick={() => handleFinalApproval(advance.id, true)}
-                              className="bg-blue-600 hover:bg-blue-700"
-                            >
-                              <Check className="h-4 w-4 mr-1" />
-                              Final Approve
-                            </Button>
-                            <Button
-                              variant="destructive"
-                              size="sm"
-                              onClick={() => handleFinalApproval(advance.id, false)}
-                            >
-                              <X className="h-4 w-4 mr-1" />
-                              Final Reject
                             </Button>
                           </>
                         )}
@@ -398,14 +399,10 @@ const OperationsSalaryAdvances = () => {
             </DialogHeader>
                     {selectedAdvance && (
                       <div className="space-y-4">
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 gap-4">
                           <div>
                             <Label>Employee</Label>
                             <p className="text-sm">{selectedAdvance.employeeName} (ID: {selectedAdvance.employeeId})</p>
-                          </div>
-                          <div>
-                            <Label>Branch</Label>
-                            <p className="text-sm">{selectedAdvance.branch}</p>
                           </div>
                         </div>
                         
@@ -577,7 +574,7 @@ const OperationsSalaryAdvances = () => {
               </div>
             )}
             <div className="flex justify-end space-x-2">
-              {selectedAdvance?.status === 'pending_ops_initial' ? (
+              {selectedAdvance?.status === 'PENDING' ? (
                 <>
                   <Button
                     variant="outline"
@@ -592,25 +589,7 @@ const OperationsSalaryAdvances = () => {
                     className="bg-green-600 hover:bg-green-700"
                   >
                     <Check className="h-4 w-4 mr-2" />
-                    Approve & Forward to HR
-                  </Button>
-                </>
-              ) : selectedAdvance?.status === 'hr_approved' ? (
-                <>
-                  <Button
-                    variant="outline"
-                    onClick={() => handleFinalApproval(selectedAdvance.id, false)}
-                    className="text-red-600 hover:text-red-700"
-                  >
-                    <X className="h-4 w-4 mr-2" />
-                    Final Reject
-                  </Button>
-                  <Button
-                    onClick={() => handleFinalApproval(selectedAdvance.id, true)}
-                    className="bg-blue-600 hover:bg-blue-700"
-                  >
-                    <Check className="h-4 w-4 mr-2" />
-                    Final Approve
+                    Approve
                   </Button>
                 </>
               ) : (

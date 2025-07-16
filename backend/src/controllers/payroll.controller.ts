@@ -1431,6 +1431,7 @@ export const getPayrollEmployees = async (req: Request, res: Response) => {
 
     const { periodId, employeeId, department, branch, status } = req.query;
 
+
     // Build where clause
     const whereClause: any = {
       tenantId: req.tenantId,
@@ -1438,7 +1439,13 @@ export const getPayrollEmployees = async (req: Request, res: Response) => {
 
     // If specific employee requested
     if (employeeId) {
-      whereClause.employeeId = employeeId as string;
+      // Check if employeeId is UUID or employeeNumber
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(employeeId as string);
+      if (isUuid) {
+        whereClause.id = employeeId as string;
+      } else {
+        whereClause.employeeNumber = employeeId as string;
+      }
     }
 
     // If department filter requested

@@ -1,8 +1,14 @@
 // Script to generate a new valid JWT for testing
-// Usage: node scripts/generateTestJwt.js
-const jwt = require('jsonwebtoken');
+// Usage: ts-node scripts/generateTestJwt.ts
+import jwt from 'jsonwebtoken';
 
-const payload = {
+interface JwtPayload {
+  userId: string;
+  role: string;
+  tenantId: string;
+}
+
+const payload: JwtPayload = {
   userId: 'test-user',
   role: 'ADMIN',
   tenantId: '00000000-0000-0000-0000-000000000000', // Charlie's HRMS

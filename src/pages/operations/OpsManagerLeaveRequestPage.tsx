@@ -13,10 +13,11 @@ import { useForm } from 'react-hook-form';
 import { Calendar, Plus, CheckCircle, XCircle, Clock, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { api } from '@/services/unifiedApi';
+import { leaveService } from '@/services/api/leave.service';
 import type { LeaveRequest } from '@/types/types';
 
-const LeaveRequests = () => {
+
+const OpsManagerLeaveRequestPage = () => {
   const { toast } = useToast();
   const { user } = useAuth();
   const [requests, setRequests] = useState<LeaveRequest[]>([]);
@@ -38,17 +39,17 @@ const LeaveRequests = () => {
       if (!user?.employeeId) return;
       try {
         setLoading(true);
-        const response = await api.data.getLeaveRequests('employee', { employeeId: user.employeeId });
-        // Defensive: handle both array and object with requests property
-        const requestsArray = Array.isArray(response)
-          ? response
+        const response = await leaveService.getLeaveRequests({ employeeId: user.employeeId });
+        // Defensive: handle both { data: [] } and { requests: [] }
+        const requestsArray = Array.isArray(response?.data)
+          ? response.data
           : Array.isArray((response as any)?.requests)
             ? (response as any).requests
             : [];
         const mappedRequests = requestsArray.map((req: any) => ({
           ...req,
-          employeeName: req.employeeName ?? `${user?.firstName} ${user?.lastName}`,
-          branch: req.branch ?? user?.branch ?? '',
+          employeeName: req.employeeName ?? '', // or appropriate fallback
+          branch: req.branch ?? '',
           days: req.days ?? (
             req.startDate && req.endDate
               ? (Math.ceil((new Date(req.endDate).getTime() - new Date(req.startDate).getTime()) / (1000 * 3600 * 24)) + 1)
@@ -118,30 +119,21 @@ const LeaveRequests = () => {
       const timeDifference = endDate.getTime() - startDate.getTime();
       const days = Math.ceil(timeDifference / (1000 * 3600 * 24)) + 1;
 
-      const newRequest = {
-        employeeId: user?.employeeId || 'EMP001',
-        employeeName: `${user?.firstName} ${user?.lastName}` || 'Employee',
-        branch: user?.branch || 'Main Branch',
-        leaveType: data.leaveType,
+      // Ensure leaveTypeId is provided for API
+      const apiRequest = {
+        leaveTypeId: data.leaveType, // assuming data.leaveType is the ID
         startDate: data.startDate,
         endDate: data.endDate,
-        days,
         reason: data.reason
       };
-
-      await api.data.submitLeaveRequest(newRequest);
-      
+      await leaveService.createLeaveRequest(apiRequest);
       // Reload requests
-      const response = await api.data.getLeaveRequests('employee', { employeeId: user?.employeeId });
-      const requestsArray = Array.isArray(response)
-        ? response
-        : Array.isArray((response as any)?.requests)
-          ? (response as any).requests
-          : [];
-      const mappedRequests = requestsArray.map((req: any) => ({
+      const response = await leaveService.getLeaveRequests({ employeeId: user?.employeeId });
+      // Map API response to expected LeaveRequest shape
+      const mappedRequests = (response?.data || []).map((req: any) => ({
         ...req,
-        employeeName: req.employeeName ?? `${user?.firstName} ${user?.lastName}`,
-        branch: req.branch ?? user?.branch ?? '',
+        employeeName: req.employeeName ?? '',
+        branch: req.branch ?? '',
         days: req.days ?? (
           req.startDate && req.endDate
             ? (Math.ceil((new Date(req.endDate).getTime() - new Date(req.startDate).getTime()) / (1000 * 3600 * 24)) + 1)
@@ -151,10 +143,8 @@ const LeaveRequests = () => {
         // Add other missing fields with fallbacks if needed
       }));
       setRequests(mappedRequests);
-      
       setIsDialogOpen(false);
       form.reset();
-
       toast({
         title: "Request Submitted",
         description: "Your leave request has been submitted for approval.",
@@ -178,7 +168,6 @@ const LeaveRequests = () => {
 
   const approvedRequests = requests.filter(r => r.status === 'ops_final_approved').length;
   const rejectedRequests = requests.filter(r => r.status === 'ops_final_rejected').length;
-  
   // Calculate total days taken this year
   const currentYear = new Date().getFullYear();
   const totalDaysTaken = requests
@@ -217,7 +206,7 @@ const LeaveRequests = () => {
 
   if (loading) {
     return (
-      <DashboardLayout title="Leave Requests">
+      <DashboardLayout title="My Leave Requests (Ops Manager)">
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
             <Clock className="h-8 w-8 animate-spin mx-auto mb-4" />
@@ -229,14 +218,13 @@ const LeaveRequests = () => {
   }
 
   return (
-    <DashboardLayout title="Leave Requests">
+    <DashboardLayout title="My Leave Requests (Ops Manager)">
       <div className="space-y-6">
         <div className="flex justify-between items-center">
           <div>
-            <h2 className="text-2xl font-bold">Welcome, {user?.firstName}!</h2>
+            {/* Removed welcome title */}
             <p className="text-muted-foreground">Manage your leave requests and view history</p>
           </div>
-          
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
               <Button>
@@ -279,7 +267,6 @@ const LeaveRequests = () => {
                       </FormItem>
                     )}
                   />
-                  
                   <div className="grid grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
@@ -294,7 +281,6 @@ const LeaveRequests = () => {
                         </FormItem>
                       )}
                     />
-                    
                     <FormField
                       control={form.control}
                       name="endDate"
@@ -309,7 +295,6 @@ const LeaveRequests = () => {
                       )}
                     />
                   </div>
-                  
                   <FormField
                     control={form.control}
                     name="reason"
@@ -323,7 +308,6 @@ const LeaveRequests = () => {
                       </FormItem>
                     )}
                   />
-                  
                   <div className="flex justify-end gap-2">
                     <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
                       Cancel
@@ -335,7 +319,6 @@ const LeaveRequests = () => {
             </DialogContent>
           </Dialog>
         </div>
-
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {stats.map((stat) => (
             <Card key={stat.title}>
@@ -350,7 +333,6 @@ const LeaveRequests = () => {
             </Card>
           ))}
         </div>
-
         <Card>
           <CardHeader>
             <CardTitle>Your Leave Requests</CardTitle>
@@ -433,22 +415,10 @@ const LeaveRequests = () => {
                               <label className="text-sm font-medium">Reason</label>
                               <p className="mt-1">{request.reason}</p>
                             </div>
-
-                            {/* Workflow History */}
-                            {(request.opsManagerName || request.hrReviewerName) && (
+                            {/* Only show HR and Final Approval history, not ops manager initial approval */}
+                            {(request.hrReviewerName || request.opsFinalDate) && (
                               <div className="space-y-3 border-t pt-4">
                                 <h4 className="font-semibold">Approval History</h4>
-                                
-                                {request.opsManagerName && (
-                                  <div className="border-l-4 border-blue-500 pl-4">
-                                    <label className="text-sm font-medium">Operations Review</label>
-                                    <p className="text-sm">{request.opsManagerName} on {request.opsInitialDate}</p>
-                                    {request.opsInitialComments && (
-                                      <p className="text-sm text-muted-foreground">{request.opsInitialComments}</p>
-                                    )}
-                                  </div>
-                                )}
-                                
                                 {request.hrReviewerName && (
                                   <div className="border-l-4 border-green-500 pl-4">
                                     <label className="text-sm font-medium">HR Review</label>
@@ -459,7 +429,6 @@ const LeaveRequests = () => {
                                     )}
                                   </div>
                                 )}
-
                                 {request.opsFinalDate && (
                                   <div className="border-l-4 border-purple-500 pl-4">
                                     <label className="text-sm font-medium">Final Approval</label>
@@ -487,4 +456,11 @@ const LeaveRequests = () => {
   );
 };
 
-export default LeaveRequests;
+export default OpsManagerLeaveRequestPage;
+
+// --- Updated below to match employee LeaveRequests formatting ---
+
+// ...imports remain unchanged...
+
+// Add getStatusColor, getStatusIcon, onSubmit, stats, and detailed view dialog as in employee LeaveRequests
+

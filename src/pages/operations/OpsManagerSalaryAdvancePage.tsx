@@ -14,17 +14,22 @@ import { DollarSign, Calendar, Plus, CheckCircle, XCircle, Clock, AlertCircle } 
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { salaryAdvanceService } from '@/services/api/salaryAdvance.service';
+import { employeeService } from '@/services/api/employee.service';
 import { formatCurrencyCompact } from '@/utils/currency';
 import type { SalaryAdvanceRequest } from '@/types/types';
 import { PayrollEngine } from '@/services/payrollEngine';
 import { PayrollDataService } from '@/services/payrollDataService';
 
-const SalaryAdvanceRequestPage = () => {
+
+const OpsManagerSalaryAdvancePage = () => {
   const { toast } = useToast();
   const { user } = useAuth();
   const [requests, setRequests] = useState<SalaryAdvanceRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [employeeInfo, setEmployeeInfo] = useState<any>(null);
+  const [monthlySalary, setMonthlySalary] = useState<number|null>(null);
+
   const form = useForm({
     defaultValues: {
       amount: '',
@@ -39,14 +44,44 @@ const SalaryAdvanceRequestPage = () => {
       if (!user?.employeeId) return;
       try {
         setLoading(true);
+        console.log('Loading salary advance requests for employeeId:', user.employeeId);
         const response = await salaryAdvanceService.getSalaryAdvanceRequests({ employeeId: user.employeeId });
-        // Ops manager logic expects response.requests
-        const requestsArray = Array.isArray((response as any)?.requests)
-          ? (response as any).requests
-          : Array.isArray(response.data)
-            ? response.data
-            : [];
-        setRequests(requestsArray);
+        console.log('Salary advance response:', response);
+        
+        // Safely handle the response
+        const responseData = (response as any)?.requests || [];
+        if (!Array.isArray(responseData)) {
+          console.error('Expected array but got:', typeof responseData, responseData);
+          setRequests([]);
+          return;
+        }
+        // Map API response to local type
+        const advances = responseData.map((apiReq: any) => ({
+          id: apiReq.id,
+          employeeId: apiReq.employeeId,
+          employeeName: apiReq.employee?.firstName && apiReq.employee?.lastName ? `${apiReq.employee.firstName} ${apiReq.employee.lastName}` : '',
+          branch: apiReq.employee?.department || '',
+          amount: apiReq.requestedAmount,
+          disbursementMethod: apiReq.disbursementMethod || '',
+          reason: apiReq.reason,
+          status: apiReq.status,
+          requestDate: apiReq.requestDate || apiReq.createdAt,
+          opsManagerName: apiReq.approver ? `${apiReq.approver.firstName} ${apiReq.approver.lastName}` : '',
+          opsInitialDate: apiReq.createdAt,
+          opsInitialComments: '',
+          hrReviewerName: '',
+          hrReviewDate: '',
+          hrDecision: '',
+          hrComments: '',
+          opsFinalDate: apiReq.updatedAt,
+          opsFinalComments: '',
+          currentStep: apiReq.status,
+          payrollIntegration: apiReq.payrollIntegration || {},
+          repaymentDetails: apiReq.repaymentDetails || {},
+          hrEligibilityDetails: apiReq.hrEligibilityDetails || {},
+          workflowHistory: [] as import('@/types/types').WorkflowStep[],
+        }));
+        setRequests(advances);
       } catch (error) {
         console.error('Failed to load salary advance requests:', error);
         toast({
@@ -54,13 +89,82 @@ const SalaryAdvanceRequestPage = () => {
           description: "Failed to load salary advance requests from the server.",
           variant: "destructive"
         });
-        setRequests([]);
+        setRequests([]); // Show empty if error, do not use mock data
       } finally {
         setLoading(false);
       }
     };
     loadRequests();
   }, [user, toast]);
+
+  // Get employee payroll information
+  useEffect(() => {
+    const loadEmployeeInfo = async () => {
+      if (!user?.employeeId) return;
+      try {
+        console.log('Loading employee info for employeeId:', user.employeeId);
+        const info = await employeeService.getEmployeeByEmployeeId(user.employeeId);
+        console.log('Employee info loaded:', info);
+        setEmployeeInfo(info);
+        // Only set salary if it exists in DB, else null
+        setMonthlySalary(typeof info?.salary === 'number' ? info.salary : null);
+      } catch (error) {
+        console.error('Failed to load employee info:', error);
+        setMonthlySalary(null);
+      }
+    };
+    loadEmployeeInfo();
+  }, [user]);
+
+  // Calculate statistics
+  const totalActiveAdvances = requests
+    .filter(req => req.status === 'disbursed' || req.status === 'repaying')
+    .reduce((sum, req) => sum + (req.repaymentDetails?.remainingBalance || 0), 0);
+
+  const totalMonthlyDeductions = requests
+    .filter(req => req.status === 'disbursed' || req.status === 'repaying')
+    .reduce((sum, req) => sum + (req.payrollIntegration?.monthlyDeduction || 0), 0);
+
+  const pendingRequests = requests.filter(r => 
+    r.status === 'pending_ops_initial' || 
+    r.status === 'forwarded_to_hr' || 
+    r.status === 'hr_approved'
+  ).length;
+
+  // Calculate max advance limit and available credit using the payroll engine
+  const maxAdvanceLimit = typeof monthlySalary === 'number' && monthlySalary > 0
+    ? PayrollEngine.calculateMaxAdvanceLimit(monthlySalary)
+    : null;
+  const availableCredit = typeof monthlySalary === 'number' && maxAdvanceLimit !== null
+    ? PayrollEngine.calculateAvailableCredit(monthlySalary, totalActiveAdvances)
+    : null;
+
+  const stats = [
+    {
+      title: 'Pending Requests',
+      value: pendingRequests.toString(),
+      description: 'Awaiting approval',
+      icon: Clock,
+    },
+    {
+      title: 'Active Advances',
+      value: formatCurrencyCompact(totalActiveAdvances),
+      description: 'Outstanding balance',
+      icon: DollarSign,
+    },
+    {
+      title: 'Monthly Deduction',
+      value: formatCurrencyCompact(totalMonthlyDeductions),
+      description: 'From your salary',
+      icon: Calendar,
+    },
+    {
+      title: 'Available Credit',
+      value: availableCredit !== null ? formatCurrencyCompact(availableCredit) : 'N/A',
+      description: 'Based on your salary',
+      icon: CheckCircle,
+    },
+  ];
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -115,26 +219,18 @@ const SalaryAdvanceRequestPage = () => {
   const onSubmit = async (data: any) => {
     try {
       const amount = parseFloat(data.amount);
-      if (isNaN(amount) || amount <= 0) {
-        toast({
-          title: "Invalid Amount",
-          description: "Please enter a valid amount.",
-          variant: "destructive"
-        });
-        return;
-      }
-      if (maxAdvanceLimit !== null && amount > maxAdvanceLimit) {
+      if (amount > maxAdvanceLimit) {
         toast({
           title: "Amount Exceeds Limit",
-      description: `Maximum advance allowed is ${maxAdvanceLimit != null ? formatCurrencyCompact(maxAdvanceLimit) : 'N/A'} (25% of your salary).`,
+          description: `Maximum advance allowed is ${formatCurrencyCompact(maxAdvanceLimit)} (25% of your salary).`,
           variant: "destructive"
         });
         return;
       }
-      if (availableCredit !== null && amount > availableCredit) {
+      if (amount > availableCredit) {
         toast({
           title: "Insufficient Credit",
-      description: `Available credit is ${availableCredit != null ? formatCurrencyCompact(availableCredit) : 'N/A'}. Please repay existing advances first.`,
+          description: `Available credit is ${formatCurrencyCompact(availableCredit)}. Please repay existing advances first.`,
           variant: "destructive"
         });
         return;
@@ -142,17 +238,39 @@ const SalaryAdvanceRequestPage = () => {
       const newRequest = {
         requestedAmount: amount,
         reason: data.reason,
-        // Optionally add repaymentMonths if needed, e.g. repaymentMonths: 3
+        // Optionally add repaymentMonths if needed, e.g. repaymentMonths: 1
       };
       await salaryAdvanceService.createSalaryAdvanceRequest(newRequest);
       // Reload requests
       const response = await salaryAdvanceService.getSalaryAdvanceRequests({ employeeId: user?.employeeId });
-      const requestsArray = Array.isArray((response as any)?.requests)
-        ? (response as any).requests
-        : Array.isArray(response.data)
-          ? response.data
-          : [];
-      setRequests(requestsArray);
+      // Map API response to local type
+      const advances = (response?.data || []).map((apiReq: any) => ({
+        id: apiReq.id,
+        employeeId: apiReq.employeeId,
+        employeeName: apiReq.employee?.firstName && apiReq.employee?.lastName ? `${apiReq.employee.firstName} ${apiReq.employee.lastName}` : '',
+        branch: apiReq.employee?.department || '',
+        amount: apiReq.requestedAmount,
+        disbursementMethod: apiReq.disbursementMethod || '',
+        reason: apiReq.reason,
+        status: apiReq.status,
+        requestDate: apiReq.requestDate || apiReq.createdAt,
+        opsManagerName: apiReq.approver ? `${apiReq.approver.firstName} ${apiReq.approver.lastName}` : '',
+        opsInitialDate: apiReq.createdAt,
+        opsInitialComments: '',
+        hrReviewerName: '',
+        hrReviewDate: '',
+        hrDecision: '',
+        hrComments: '',
+        opsFinalDate: apiReq.updatedAt,
+        // Removed duplicate opsFinalDecision property
+        opsFinalComments: '',
+        currentStep: apiReq.status,
+        payrollIntegration: apiReq.payrollIntegration || {},
+        repaymentDetails: apiReq.repaymentDetails || {},
+        hrEligibilityDetails: apiReq.hrEligibilityDetails || {},
+        workflowHistory: [] as import('@/types/types').WorkflowStep[],
+      }));
+      setRequests(advances);
       setIsDialogOpen(false);
       form.reset();
       toast({
@@ -169,86 +287,9 @@ const SalaryAdvanceRequestPage = () => {
     }
   };
 
-  // Get employee payroll information
-  const [employeeInfo, setEmployeeInfo] = useState<any>(null);
-  const [monthlySalary, setMonthlySalary] = useState<number>(0);
-
-  // Load employee info
-  useEffect(() => {
-    const loadEmployeeInfo = async () => {
-      if (!user) return;
-      try {
-        const info = await PayrollDataService.getEmployeeInfo(user);
-        setEmployeeInfo(info);
-        setMonthlySalary(info?.monthlySalary ?? null);
-      } catch (error: any) {
-        console.error('Failed to load employee info:', error);
-        if (error?.response?.status === 403 || (error?.message && error.message.includes('permission'))) {
-          setMonthlySalary(null);
-          toast({
-            title: 'Permission Denied',
-            description: 'You do not have permission to view payroll information. Please contact HR or try again later.',
-            variant: 'destructive',
-          });
-        } else {
-          setMonthlySalary(null);
-        }
-      }
-    };
-    loadEmployeeInfo();
-  }, [user, toast]);
-
-  // Calculate statistics
-  const totalActiveAdvances = requests
-    .filter(req => req.status === 'disbursed' || req.status === 'repaying')
-    .reduce((sum, req) => sum + (req.repaymentDetails?.remainingBalance || 0), 0);
-
-  const totalMonthlyDeductions = requests
-    .filter(req => req.status === 'disbursed' || req.status === 'repaying')
-    .reduce((sum, req) => sum + (req.payrollIntegration?.monthlyDeduction || 0), 0);
-
-  const pendingRequests = requests.filter(r => 
-    r.status === 'pending_ops_initial' || 
-    r.status === 'forwarded_to_hr' || 
-    r.status === 'hr_approved'
-  ).length;
-
-  // Calculate max advance limit and available credit using the payroll engine
-  const maxAdvanceLimit = monthlySalary ? PayrollEngine.calculateMaxAdvanceLimit(monthlySalary) : null;
-  const availableCredit = (monthlySalary && maxAdvanceLimit !== null)
-    ? PayrollEngine.calculateAvailableCredit(monthlySalary, totalActiveAdvances)
-    : null;
-
-  const stats = [
-    {
-      title: 'Pending Requests',
-      value: pendingRequests.toString(),
-      description: 'Awaiting approval',
-      icon: Clock,
-    },
-    {
-      title: 'Active Advances',
-      value: totalActiveAdvances != null ? formatCurrencyCompact(totalActiveAdvances) : 'N/A',
-      description: 'Outstanding balance',
-      icon: DollarSign,
-    },
-    {
-      title: 'Monthly Deduction',
-      value: totalMonthlyDeductions != null ? formatCurrencyCompact(totalMonthlyDeductions) : 'N/A',
-      description: 'From your salary',
-      icon: Calendar,
-    },
-    {
-      title: 'Available Credit',
-      value: availableCredit != null ? formatCurrencyCompact(availableCredit) : 'N/A',
-      description: 'Based on your salary',
-      icon: CheckCircle,
-    },
-  ];
-
   if (loading) {
     return (
-      <DashboardLayout title="Salary Advance Requests">
+      <DashboardLayout title="My Salary Advance Requests (Ops Manager)">
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
             <Clock className="h-8 w-8 animate-spin mx-auto mb-4" />
@@ -259,13 +300,13 @@ const SalaryAdvanceRequestPage = () => {
     );
   }
 
-  if (monthlySalary === null) {
+  if (monthlySalary === null || monthlySalary === 0) {
     return (
-      <DashboardLayout title="Salary Advance Requests">
+      <DashboardLayout title="My Salary Advance Requests (Ops Manager)">
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
             <AlertCircle className="h-8 w-8 text-red-500 mx-auto mb-4" />
-            <p className="text-red-600">Unable to fetch your salary information from the server.<br/>Please contact HR or try again later.</p>
+            <p className="text-red-600">No salary has been set for your profile in the database.<br/>You cannot request a salary advance until HR sets your salary.</p>
           </div>
         </div>
       </DashboardLayout>
@@ -273,110 +314,107 @@ const SalaryAdvanceRequestPage = () => {
   }
 
   return (
-    <DashboardLayout title="Salary Advance Requests">
+    <DashboardLayout title="My Salary Advance Requests (Ops Manager)">
       <div className="space-y-6">
         <div className="flex justify-between items-center">
           <div>
-            <h2 className="text-2xl font-bold">Welcome, {user?.firstName}!</h2>
+            {/* Removed welcome title */}
             <p className="text-muted-foreground">Manage your salary advance requests</p>
           </div>
-          
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                New Request
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Request Salary Advance</DialogTitle>
-                <DialogDescription>
-                  Submit a new salary advance request for approval
-                </DialogDescription>
-              </DialogHeader>
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                  <FormField
-                    control={form.control}
-                    name="amount"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Amount (KSH)</FormLabel>
-                        <FormControl>
-                          <Input type="number" placeholder="Enter amount in Kenyan Shillings" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                    <div className="flex items-center gap-2 mb-2">
-                      <AlertCircle className="h-4 w-4 text-blue-600" />
-                      <span className="text-sm font-medium text-blue-800">Repayment Information</span>
-                    </div>
-                    <p className="text-sm text-blue-700">
-                      Maximum advance: <strong>{maxAdvanceLimit != null ? formatCurrencyCompact(maxAdvanceLimit) : 'N/A'}</strong> (25% of your monthly salary)
-                    </p>
-                    <p className="text-sm text-blue-700">
-                      Repayment: The full amount will be deducted from your next salary payment
-                    </p>
-                    <p className="text-sm text-blue-700">
-                      Available credit: <strong>{availableCredit != null ? formatCurrencyCompact(availableCredit) : 'N/A'}</strong>
-                    </p>
-                  </div>
-
-                  <FormField
-                    control={form.control}
-                    name="disbursementMethod"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Disbursement Method</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+          {/* Only show the request dialog if salary is set */}
+          {monthlySalary > 0 && (
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <DialogTrigger asChild>
+                <Button>
+                  <Plus className="h-4 w-4 mr-2" />
+                  New Request
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Request Salary Advance</DialogTitle>
+                  <DialogDescription>
+                    Submit a new salary advance request for approval
+                  </DialogDescription>
+                </DialogHeader>
+                <Form {...form}>
+                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                    <FormField
+                      control={form.control}
+                      name="amount"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Amount (KSH)</FormLabel>
                           <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select disbursement method" />
-                            </SelectTrigger>
+                            <Input type="number" placeholder="Enter amount in Kenyan Shillings" {...field} />
                           </FormControl>
-                          <SelectContent>
-                            <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
-                            <SelectItem value="mobile_money">Mobile Money (M-Pesa)</SelectItem>
-                            <SelectItem value="cash">Cash</SelectItem>
-                            <SelectItem value="check">Check</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={form.control}
-                    name="reason"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Reason for Advance</FormLabel>
-                        <FormControl>
-                          <Textarea placeholder="Please explain why you need this advance" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <div className="flex justify-end gap-2">
-                    <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
-                      Cancel
-                    </Button>
-                    <Button type="submit">Submit Request</Button>
-                  </div>
-                </form>
-              </Form>
-            </DialogContent>
-          </Dialog>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                      <div className="flex items-center gap-2 mb-2">
+                        <AlertCircle className="h-4 w-4 text-blue-600" />
+                        <span className="text-sm font-medium text-blue-800">Repayment Information</span>
+                      </div>
+                      <p className="text-sm text-blue-700">
+                        Maximum advance: <strong>{maxAdvanceLimit !== null ? formatCurrencyCompact(maxAdvanceLimit) : '-'}</strong> (25% of your monthly salary)
+                      </p>
+                      <p className="text-sm text-blue-700">
+                        Repayment: The full amount will be deducted from your next salary payment
+                      </p>
+                      <p className="text-sm text-blue-700">
+                        Available credit: <strong>{availableCredit !== null ? formatCurrencyCompact(availableCredit) : '-'}</strong>
+                      </p>
+                    </div>
+                    <FormField
+                      control={form.control}
+                      name="disbursementMethod"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Disbursement Method</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select disbursement method" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
+                              <SelectItem value="mobile_money">Mobile Money (M-Pesa)</SelectItem>
+                              <SelectItem value="cash">Cash</SelectItem>
+                              <SelectItem value="check">Check</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="reason"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Reason for Advance</FormLabel>
+                          <FormControl>
+                            <Textarea placeholder="Please explain why you need this advance" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <div className="flex justify-end gap-2">
+                      <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
+                        Cancel
+                      </Button>
+                      <Button type="submit">Submit Request</Button>
+                    </div>
+                  </form>
+                </Form>
+              </DialogContent>
+            </Dialog>
+          )}
         </div>
-
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {stats.map((stat) => (
             <Card key={stat.title}>
@@ -391,7 +429,6 @@ const SalaryAdvanceRequestPage = () => {
             </Card>
           ))}
         </div>
-
         <Card>
           <CardHeader>
             <CardTitle>Your Advance Requests</CardTitle>
@@ -412,7 +449,7 @@ const SalaryAdvanceRequestPage = () => {
               <TableBody>
                 {requests.map((request) => (
                   <TableRow key={request.id}>
-                    <TableCell className="font-medium">{request.amount != null ? formatCurrencyCompact(request.amount) : 'N/A'}</TableCell>
+                    <TableCell className="font-medium">{typeof request.amount === 'number' ? formatCurrencyCompact(request.amount) : '-'}</TableCell>
                     <TableCell>
                       {request.requestDate ? new Date(request.requestDate).toLocaleDateString() : '-'}
                     </TableCell>
@@ -431,7 +468,7 @@ const SalaryAdvanceRequestPage = () => {
                         <div>
                           <span className="text-sm font-medium">Next Payroll</span><br />
                           <span className="text-sm text-muted-foreground">
-                            {request.payrollIntegration?.monthlyDeduction != null ? formatCurrencyCompact(request.payrollIntegration.monthlyDeduction) : 'N/A'} deduction
+                            {formatCurrencyCompact(request.payrollIntegration?.monthlyDeduction || 0)} deduction
                           </span>
                         </div>
                       ) : (
@@ -439,7 +476,7 @@ const SalaryAdvanceRequestPage = () => {
                       )}
                     </TableCell>
                     <TableCell>
-                      {request.repaymentDetails?.remainingBalance 
+                      {request.repaymentDetails?.remainingBalance != null && typeof request.repaymentDetails.remainingBalance === 'number'
                         ? formatCurrencyCompact(request.repaymentDetails.remainingBalance)
                         : '-'
                       }
@@ -459,7 +496,7 @@ const SalaryAdvanceRequestPage = () => {
                             <div className="grid grid-cols-2 gap-4">
                               <div>
                                 <label className="text-sm font-medium">Amount</label>
-                                <p>{request.amount != null ? formatCurrencyCompact(request.amount) : 'N/A'}</p>
+                                <p>{typeof request.amount === 'number' ? formatCurrencyCompact(request.amount) : '-'}</p>
                               </div>
                               <div>
                                 <label className="text-sm font-medium">Status</label>
@@ -479,7 +516,7 @@ const SalaryAdvanceRequestPage = () => {
                               </div>
                               <div>
                                 <label className="text-sm font-medium">Monthly Deduction</label>
-                                <p>{request.payrollIntegration?.monthlyDeduction != null ? formatCurrencyCompact(request.payrollIntegration.monthlyDeduction) : 'N/A'}</p>
+                                <p>{formatCurrencyCompact(request.payrollIntegration?.monthlyDeduction || 0)}</p>
                               </div>
                             </div>
                             <div className="grid grid-cols-2 gap-4">
@@ -494,22 +531,10 @@ const SalaryAdvanceRequestPage = () => {
                                 </div>
                               ) : null}
                             </div>
-
-                            {/* Workflow History */}
-                            {(request.opsManagerName || request.hrReviewerName) && (
+                            {/* Only show HR and Final Approval history, not ops manager initial approval */}
+                            {(request.hrReviewerName || request.opsFinalDate) && (
                               <div className="space-y-3 border-t pt-4">
                                 <h4 className="font-semibold">Approval History</h4>
-                                
-                                {request.opsManagerName && (
-                                  <div className="border-l-4 border-blue-500 pl-4">
-                                    <label className="text-sm font-medium">Operations Review</label>
-                                    <p className="text-sm">{request.opsManagerName} on {request.opsInitialDate}</p>
-                                    {request.opsInitialComments && (
-                                      <p className="text-sm text-muted-foreground">{request.opsInitialComments}</p>
-                                    )}
-                                  </div>
-                                )}
-                                
                                 {request.hrReviewerName && (
                                   <div className="border-l-4 border-green-500 pl-4">
                                     <label className="text-sm font-medium">HR Review</label>
@@ -520,7 +545,6 @@ const SalaryAdvanceRequestPage = () => {
                                     )}
                                   </div>
                                 )}
-
                                 {request.opsFinalDate && (
                                   <div className="border-l-4 border-purple-500 pl-4">
                                     <label className="text-sm font-medium">Final Approval</label>
@@ -533,7 +557,6 @@ const SalaryAdvanceRequestPage = () => {
                                 )}
                               </div>
                             )}
-
                             {/* Repayment Details */}
                             {request.repaymentDetails && (
                               <div className="space-y-3 border-t pt-4">
@@ -541,15 +564,15 @@ const SalaryAdvanceRequestPage = () => {
                                 <div className="grid grid-cols-2 gap-4">
                                   <div>
                                     <label className="text-sm font-medium">Original Amount</label>
-                                    <p>{request.repaymentDetails?.originalAmount != null ? formatCurrencyCompact(request.repaymentDetails.originalAmount) : 'N/A'}</p>
+                                    <p>{typeof request.repaymentDetails.originalAmount === 'number' ? formatCurrencyCompact(request.repaymentDetails.originalAmount) : '-'}</p>
                                   </div>
                                   <div>
                                     <label className="text-sm font-medium">Total Deducted</label>
-                                    <p>{request.repaymentDetails?.totalDeducted != null ? formatCurrencyCompact(request.repaymentDetails.totalDeducted) : 'N/A'}</p>
+                                    <p>{typeof request.repaymentDetails.totalDeducted === 'number' ? formatCurrencyCompact(request.repaymentDetails.totalDeducted) : '-'}</p>
                                   </div>
                                   <div>
                                     <label className="text-sm font-medium">Remaining Balance</label>
-                                    <p className="font-bold">{request.repaymentDetails?.remainingBalance != null ? formatCurrencyCompact(request.repaymentDetails.remainingBalance) : 'N/A'}</p>
+                                    <p className="font-bold">{typeof request.repaymentDetails.remainingBalance === 'number' ? formatCurrencyCompact(request.repaymentDetails.remainingBalance) : '-'}</p>
                                   </div>
                                   <div>
                                     <label className="text-sm font-medium">Repayment Method</label>
@@ -573,4 +596,10 @@ const SalaryAdvanceRequestPage = () => {
   );
 };
 
-export default SalaryAdvanceRequestPage;
+export default OpsManagerSalaryAdvancePage;
+
+// --- Updated below to match employee SalaryAdvanceRequest formatting ---
+
+// ...imports remain unchanged...
+
+// Add getStatusColor, getStatusIcon, onSubmit, stats, and detailed view dialog as in employee SalaryAdvanceRequest

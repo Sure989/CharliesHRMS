@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User } from '@/types/types';
 import { authService } from '@/services/api/auth.service';
+import { employeeService } from '@/services/api/employee.service';
 import { config } from '@/config/environment';
 
 interface AuthContextType {
@@ -33,30 +34,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const initializeAuth = async () => {
     setIsLoading(true);
     try {
-      // Try to get current user from API if authenticated
       if (authService.isAuthenticated()) {
-        try {
-          const currentUser = await authService.getCurrentUser();
+        const currentUser = await authService.getCurrentUser();
+        if (currentUser && currentUser.employeeId) {
+          // Fetch employee details by database UUID
+          const employeeDetails = await employeeService.getEmployeeById(currentUser.employeeId);
+          // Set user.employeeId to employeeNumber (business ID) for consistent lookups
+          setUser({ ...currentUser, ...employeeDetails, employeeId: employeeDetails.employeeId });
+        } else {
           setUser(currentUser);
-        } catch (error) {
-          console.error('Failed to get current user:', error);
-          // Clear invalid tokens and user data on failure
-          await authService.logout();
-          setUser(null);
         }
       } else {
-        // Check for stored user data (fallback)
-        const storedUserData = authService.getCurrentUserData();
-        if (storedUserData) {
-          setUser(storedUserData);
-        } else {
-          setUser(null);
-        }
+        setUser(null);
       }
     } catch (error) {
       console.error('Auth initialization error:', error);
-      setUser(null);
       await authService.logout();
+      setUser(null);
     } finally {
       setIsLoading(false);
     }
@@ -64,34 +58,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (email: string, password: string): Promise<boolean> => {
     setIsLoading(true);
-    console.log('AuthContext: Login attempt with email:', email);
-
     try {
-      // Use real API authentication
-      console.log('AuthContext: Using API authentication');
-      try {
-        const loginResponse = await authService.login({ email, password });
-        console.log('AuthContext: Login response received:', !!loginResponse);
-        
-        if (loginResponse && loginResponse.user) {
-          console.log('AuthContext: Setting user state with:', loginResponse.user);
-          setUser(loginResponse.user);
-          setIsLoading(false);
-          return true;
+      const loginResponse = await authService.login({ email, password });
+      if (loginResponse && loginResponse.user) {
+        const { user: authUser } = loginResponse;
+        if (authUser && authUser.employeeId) {
+          // Fetch employee details by database UUID
+          const employeeDetails = await employeeService.getEmployeeById(authUser.employeeId);
+          // Set user.employeeId to employeeNumber (business ID) for consistent lookups
+          const fullUser = { ...authUser, ...employeeDetails, employeeId: employeeDetails.employeeId, branch: employeeDetails.branch || employeeDetails.department };
+          setUser(fullUser);
+          authService.setAuthData({ token: loginResponse.token, user: fullUser, refreshToken: loginResponse.refreshToken });
+        } else {
+          setUser(authUser);
         }
-        
-        console.log('AuthContext: Login response invalid');
-        setIsLoading(false);
-        return false;
-      } catch (apiError) {
-        console.error('AuthContext: API login error:', apiError);
-        setIsLoading(false);
-        return false;
+        return true;
       }
-    } catch (error) {
-      console.error('AuthContext: Unexpected login error:', error);
-      setIsLoading(false);
       return false;
+    } catch (error) {
+      console.error('Login failed:', error);
+      return false;
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -112,14 +100,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const refreshUser = async () => {
-    if (authService.isAuthenticated()) {
-      try {
+    setIsLoading(true);
+    try {
+      if (authService.isAuthenticated()) {
         const currentUser = await authService.getCurrentUser();
-        setUser(currentUser);
-      } catch (error) {
-        console.error('Failed to refresh user:', error);
-        await logout();
+        if (currentUser && currentUser.employeeId) {
+          // Fetch employee details by database UUID
+          const employeeDetails = await employeeService.getEmployeeById(currentUser.employeeId);
+          // Set user.employeeId to employeeNumber (business ID) for consistent lookups
+          const fullUser = { ...currentUser, ...employeeDetails, employeeId: employeeDetails.employeeId, branch: employeeDetails.branch || employeeDetails.department };
+          setUser(fullUser);
+          authService.setAuthData({ token: authService.getToken() || '', user: fullUser, refreshToken: authService.getRefreshToken() });
+        } else {
+          setUser(currentUser);
+        }
       }
+    } catch (error) {
+      console.error('Failed to refresh user:', error);
+      await logout();
+    } finally {
+      setIsLoading(false);
     }
   };
 

@@ -43,7 +43,15 @@ export class PayrollDataService {
     try {
       const payrollEmployee = await this.getEmployeePayrollInfo(user.employeeId);
       const employeeDetails = await employeeService.getEmployeeByEmployeeId(user.employeeId);
-      
+
+      // Only set monthlySalary if it exists in the DB, else null
+      let monthlySalary = null;
+      if (typeof employeeDetails?.salary === 'number' && employeeDetails.salary > 0) {
+        monthlySalary = employeeDetails.salary;
+      } else if (typeof payrollEmployee?.payrollInfo.monthlySalary === 'number' && payrollEmployee.payrollInfo.monthlySalary > 0) {
+        monthlySalary = payrollEmployee.payrollInfo.monthlySalary;
+      }
+
       return {
         id: user.employeeId,
         name: `${user.firstName} ${user.lastName}`,
@@ -68,16 +76,13 @@ export class PayrollDataService {
         nhifNumber: employeeDetails?.taxInfo?.nhifNumber || 
                     payrollEmployee?.payrollInfo.taxInfo.nhifNumber || 
                     `NHIF${user.employeeId.slice(-6)}`,
-        monthlySalary: employeeDetails?.salary || 
-                       payrollEmployee?.payrollInfo.monthlySalary || 
-                       65000,
+        monthlySalary,
         hourlyRate: payrollEmployee?.payrollInfo.hourlyRate,
         employeeType: payrollEmployee?.payrollInfo.employeeType || 'salaried'
       };
     } catch (error) {
       console.error('Error fetching employee info:', error);
-      
-      // Return basic info if API calls fail
+      // Return basic info if API calls fail, but do NOT set a default salary
       return {
         id: user.employeeId,
         name: `${user.firstName} ${user.lastName}`,
@@ -92,7 +97,7 @@ export class PayrollDataService {
         kraPin: `A${user.employeeId.slice(-3)}456789Z`,
         nssfNumber: `NSSF${user.employeeId.slice(-6)}`,
         nhifNumber: `NHIF${user.employeeId.slice(-6)}`,
-        monthlySalary: 65000,
+        monthlySalary: null,
         employeeType: 'salaried'
       };
     }
@@ -113,19 +118,19 @@ export class PayrollDataService {
         return payStubs;
       }
       
-      // If no pay stubs are available from the API, generate them
+      // Get employee info and payroll info
       const employeeInfo = await this.getEmployeeInfo(user);
       const payrollEmployee = await this.getEmployeePayrollInfo(user.employeeId);
       
       if (!employeeInfo || !payrollEmployee) return [];
 
-      const monthlySalary = payrollEmployee.payrollInfo.monthlySalary || 65000;
+      const monthlySalary = payrollEmployee.payrollInfo.monthlySalary || 0;
       const deductions = payrollEmployee.payrollInfo.deductions || [];
 
       // Get current payroll periods from the API
       const periods = await payrollService.getPayrollPeriods();
       
-      // If no periods are available, use default periods
+      // Only use periods from the database
       const months = periods && periods.data && periods.data.length > 0 
         ? periods.data.slice(0, 3).map(period => ({
             id: period.id,
@@ -134,11 +139,7 @@ export class PayrollDataService {
             payDate: period.payDate,
             period: period.name
           }))
-        : [
-            { id: 'PP-2024-26', start: '2024-12-16', end: '2024-12-31', payDate: '2025-01-03', period: 'December 2024 (2nd Half)' },
-            { id: 'PP-2024-25', start: '2024-12-01', end: '2024-12-15', payDate: '2024-12-20', period: 'December 2024 (1st Half)' },
-            { id: 'PP-2024-24', start: '2024-11-16', end: '2024-11-30', payDate: '2024-12-05', period: 'November 2024 (2nd Half)' }
-          ];
+        : [];
 
       // Get tax tables from the API
       const taxTables = await payrollService.getTaxTables();
@@ -148,9 +149,9 @@ export class PayrollDataService {
       
       for (let i = 0; i < months.length; i++) {
         const month = months[i];
-        const overtime = i === 0 ? 25000 : 0; // Only current period has overtime
-        const allowances = monthlySalary > 80000 ? 15000 : 5000; // Higher allowances for senior staff
-        const grossPay = monthlySalary + allowances + overtime;
+        const overtime = 0;
+        const allowances = 0;
+        const grossPay = monthlySalary;
 
         // Use PayrollEngine for calculations instead of hardcoded logic
         

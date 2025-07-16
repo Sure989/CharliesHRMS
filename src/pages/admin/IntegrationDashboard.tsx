@@ -126,12 +126,7 @@ const IntegrationDashboard = () => {
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold">Integration & Automation</h1>
-            <p className="text-muted-foreground">
-              Manage system integrations and automated workflows
-            </p>
-          </div>
+          {/* Removed duplicate title */}
           <div className="flex items-center space-x-2">
             <Button onClick={loadDashboardData} disabled={isLoading}>
               <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />

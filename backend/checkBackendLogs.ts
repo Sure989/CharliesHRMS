@@ -1,10 +1,8 @@
-// checkBackendLogs.js
-const fs = require('fs');
-const path = require('path');
+// checkBackendLogs.ts
+import fs from 'fs';
+import path from 'path';
 
-// Adjust this path if your log file is elsewhere
 const logFilePath = path.join(__dirname, 'logs', 'app.log');
-
 const linesToShow = 50; // Number of log lines to display
 
 fs.readFile(logFilePath, 'utf8', (err, data) => {
@@ -15,5 +13,5 @@ fs.readFile(logFilePath, 'utf8', (err, data) => {
   const lines = data.trim().split('\n');
   const lastLines = lines.slice(-linesToShow);
   console.log(`--- Last ${linesToShow} lines of backend log ---`);
-  lastLines.forEach(line => console.log(line));
+  lastLines.forEach((line: string) => console.log(line));
 });

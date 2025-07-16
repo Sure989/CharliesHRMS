@@ -10,6 +10,7 @@ import { useState, useEffect } from 'react';
 import { Check, X, Eye, Calendar, Clock } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { api } from '@/services/unifiedApi';
+import { updateLeaveRequest } from '@/services/api';
 import { LeaveRequest } from '@/types/types';
 
 const LeaveApprovals = () => {
@@ -21,63 +22,62 @@ const LeaveApprovals = () => {
   const [loading, setLoading] = useState(true);
 
   // Load leave requests from API
-  useEffect(() => {
-    const loadLeaveRequests = async () => {
-      try {
-        setLoading(true);
-        const requests = await api.data.getLeaveRequests('hr');
-        setLeaveRequests(requests);
-      } catch (error) {
-        console.error('Failed to load leave requests:', error);
-        toast({
-          title: "Error",
-          description: "Failed to load leave requests from the server.",
-          variant: "destructive"
-        });
-        setLeaveRequests([]); // No mock data fallback
-      } finally {
-        setLoading(false);
-      }
-    };
+    useEffect(() => {
+      const loadLeaveRequests = async () => {
+        try {
+          setLoading(true);
+          const requests = await api.data.getLeaveRequests('hr');
+          // Only show requests for employees with NO branch assigned
+          const filtered = requests.filter(r => !r.branch || r.branch === '' || r.branch === null);
+          setLeaveRequests(filtered);
+        } catch (error) {
+          console.error('Failed to load leave requests:', error);
+          toast({
+            title: "Error",
+            description: "Failed to load leave requests from the server.",
+            variant: "destructive"
+          });
+          setLeaveRequests([]);
+        } finally {
+          setLoading(false);
+        }
+      };
+      loadLeaveRequests();
+    }, [toast]);
 
-    loadLeaveRequests();
-  }, [toast]);
+  // ...existing code...
 
-  const handleApproval = async (requestId: string, approved: boolean) => {
+  // Handles approval/rejection of leave requests
+  const handleApproval = async (requestId: string, isApproved: boolean) => {
     try {
-      const updatedRequest = await api.data.approveLeaveRequest(requestId, 'hr', approvalComments);
-      
-      setLeaveRequests(requests => 
-        requests.map(request => {
-          if (request.id === requestId) {
-            return {
-              ...request,
-              status: approved ? 'hr_approved' : 'hr_rejected',
-              hrReviewerName: 'Current HR Manager',
-              hrReviewDate: new Date().toISOString().split('T')[0],
-              hrDecision: approved ? 'eligible' : 'not_eligible',
-              hrComments: approvalComments || undefined,
-              currentStep: approved ? 'ops_final' : 'completed'
-            };
-          }
-          return request;
-        })
-      );
-      
-      setApprovalComments('');
-      setIsViewDialogOpen(false);
-      
+      setLoading(true);
+      const status = isApproved ? 'approved' : 'rejected';
+      if (isApproved) {
+        await updateLeaveRequest(requestId, { status });
+      } else {
+        await updateLeaveRequest(requestId, { status, rejectionReason: approvalComments });
+      }
       toast({
-        title: approved ? "Leave Request Approved" : "Leave Request Rejected",
-        description: `The leave request has been ${approved ? 'approved' : 'rejected'}.`
+        title: isApproved ? "Leave Approved" : "Leave Rejected",
+        description: `Leave request has been ${isApproved ? "approved" : "rejected"} successfully.`,
+        variant: isApproved ? "default" : "destructive"
       });
+      // Refresh leave requests
+      const requests = await api.data.getLeaveRequests('hr');
+      const filtered = requests.filter(r => !r.branch || r.branch === '' || r.branch === null);
+      setLeaveRequests(filtered);
+      setIsViewDialogOpen(false);
+      setSelectedRequest(null);
+      setApprovalComments('');
     } catch (error) {
       console.error('Failed to update leave request:', error);
       toast({
         title: "Error",
-        description: "Failed to update leave request. Please try again.",
+        description: "Failed to update leave request status.",
         variant: "destructive"
       });
+    } finally {
+      setLoading(false);
     }
   };
 

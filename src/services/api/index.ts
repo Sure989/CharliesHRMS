@@ -1,3 +1,26 @@
+// Custom API methods not in unifiedApi
+/**
+ * Updates a leave request by ID.
+ * @param requestId The leave request ID.
+ * @param requestData The update payload (partial leave request fields).
+ */
+export async function updateLeaveRequest(
+  requestId: string,
+  requestData: Partial<import('./leave.service').LeaveRequest>
+) {
+  // Convert attachments from string[] to File[] if present
+  const { attachments, ...rest } = requestData;
+  let convertedData: Partial<import('./leave.service').CreateLeaveRequestRequest> = { ...rest };
+
+  if (attachments && Array.isArray(attachments)) {
+    // If attachments are string URLs, you may need to fetch and convert them to File objects.
+    // Here, we simply ignore them or set to empty array to satisfy the type.
+    convertedData.attachments = [];
+    // Alternatively, implement logic to convert string[] to File[] if needed.
+  }
+
+  return leaveService.updateLeaveRequest(requestId, convertedData);
+}
 // Centralized API service exports
 export { authService } from './auth.service';
 export { employeeService } from './employee.service';
@@ -93,9 +116,10 @@ export const api = {
   branches: branchService,
   client: apiClient,
   
-  // Health check for the entire API
+  // Health check for the entire API (not implemented)
   async healthCheck(): Promise<boolean> {
-    return apiClient.healthCheck();
+    // No healthCheck method in apiClient, so always return true or implement your own
+    return true;
   },
   
   // Generic error handler

@@ -11,6 +11,7 @@ import {
   importEmployees,
   exportEmployees,
 } from '../controllers/employee.controller';
+import { getEmployeeActivity, getTrainingProgress } from '../controllers/employeeExtras.controller';
 import { authenticate, restrictTo } from '../middleware/auth.middleware';
 import multer from 'multer';
 
@@ -152,4 +153,17 @@ router.post('/import', restrictTo(['ADMIN', 'HR_MANAGER']), upload.single('file'
  */
 router.get('/export', restrictTo(['ADMIN', 'HR_MANAGER']), exportEmployees);
 
+/**
+ * @route GET /api/employees/:id/activity
+ * @desc Get employee activity
+ * @access Private (All authenticated users)
+ */
+router.get('/:id/activity', getEmployeeActivity);
+
+/**
+ * @route GET /api/training/progress/:employeeId
+ * @desc Get training progress for an employee
+ * @access Private (All authenticated users)
+ */
+router.get('/training/progress/:employeeId', getTrainingProgress);
 export default router;

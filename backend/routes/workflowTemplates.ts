@@ -1,12 +1,13 @@
-const express = require('express');
-const router = express.Router();
-const { PrismaClient } = require('@prisma/client');
+import { Router, Request, Response } from 'express';
+import { PrismaClient } from '@prisma/client';
+
+const router = Router();
 const prisma = new PrismaClient();
 
 // GET all workflow templates (optionally filter by tenant)
-router.get('/api/workflow-templates', async (req, res) => {
+router.get('/api/workflow-templates', async (req: Request, res: Response) => {
   try {
-    const tenantId = req.query.tenantId;
+    const tenantId = req.query.tenantId as string | undefined;
     const where = tenantId ? { tenantId } : {};
     const templates = await prisma.workflowTemplate.findMany({ where });
     res.json(templates);
@@ -16,7 +17,7 @@ router.get('/api/workflow-templates', async (req, res) => {
 });
 
 // POST create a new workflow template
-router.post('/api/workflow-templates', async (req, res) => {
+router.post('/api/workflow-templates', async (req: Request, res: Response) => {
   try {
     const template = await prisma.workflowTemplate.create({
       data: req.body
@@ -27,4 +28,4 @@ router.post('/api/workflow-templates', async (req, res) => {
   }
 });
 
-module.exports = router;
+export default router;

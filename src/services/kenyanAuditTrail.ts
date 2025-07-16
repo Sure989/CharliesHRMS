@@ -1,4 +1,3 @@
-import { KenyanPayrollAuditLog } from '../types/kenyanPayroll';
 
 export interface AuditEvent {
   id: string;

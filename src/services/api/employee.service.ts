@@ -123,10 +123,28 @@ class EmployeeService {
    */
   async getEmployeeById(id: string): Promise<Employee> {
     try {
-      const response = await apiClient.get<{employee: Employee}>(`/employees/${id}`);
+      const response = await apiClient.get<{employee: any}>(`/employees/${id}`);
       
       if (response.status === 'success' && response.data && response.data.employee) {
-        return response.data.employee;
+        const emp = response.data.employee;
+        // Map backend response to frontend format
+        return {
+          id: emp.id,
+          employeeId: emp.employeeNumber, // Map employeeNumber to employeeId
+          firstName: emp.firstName,
+          lastName: emp.lastName,
+          email: emp.email,
+          phone: emp.phone,
+          position: emp.position,
+          department: typeof emp.department === 'object' ? emp.department?.name || '' : emp.department || '',
+          branch: typeof emp.branch === 'object' ? emp.branch?.name || '' : emp.branch || '',
+          hireDate: emp.hireDate,
+          status: emp.status === 'ACTIVE' ? 'active' : emp.status === 'INACTIVE' ? 'inactive' : emp.status,
+          salary: emp.salary,
+          address: emp.address,
+          createdAt: emp.createdAt,
+          updatedAt: emp.updatedAt
+        } as Employee;
       }
       
       throw new Error(response.message || 'Failed to get employee');
@@ -141,10 +159,28 @@ class EmployeeService {
    */
   async getEmployeeByEmployeeId(employeeId: string): Promise<Employee> {
     try {
-      const response = await apiClient.get<{employee: Employee}>(`/employees/by-employee-id/${employeeId}`);
+      const response = await apiClient.get<{employee: any}>(`/employees/by-employee-id/${employeeId}`);
       
       if (response.status === 'success' && response.data && response.data.employee) {
-        return response.data.employee;
+        const emp = response.data.employee;
+        // Map backend response to frontend format
+        return {
+          id: emp.id,
+          employeeId: emp.employeeNumber, // Map employeeNumber to employeeId
+          firstName: emp.firstName,
+          lastName: emp.lastName,
+          email: emp.email,
+          phone: emp.phone,
+          position: emp.position,
+          department: typeof emp.department === 'object' ? emp.department?.name || '' : emp.department || '',
+          branch: typeof emp.branch === 'object' ? emp.branch?.name || '' : emp.branch || '',
+          hireDate: emp.hireDate,
+          status: emp.status === 'ACTIVE' ? 'active' : emp.status === 'INACTIVE' ? 'inactive' : emp.status,
+          salary: emp.salary,
+          address: emp.address,
+          createdAt: emp.createdAt,
+          updatedAt: emp.updatedAt
+        } as Employee;
       }
       
       throw new Error(response.message || 'Failed to get employee');

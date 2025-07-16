@@ -28,17 +28,37 @@ export async function checkSalaryAdvanceEligibility(
   tenantId: string,
   requestedAmount: number
 ): Promise<SalaryAdvanceEligibility> {
-  // Get employee details
-  const employee = await prisma.employee.findUnique({
-    where: { id: employeeId, tenantId },
-    select: {
-      id: true,
-      salary: true,
-      hireDate: true,
-      status: true,
-    },
-  });
-
+  // Debug logging
+  console.log('[checkSalaryAdvanceEligibility] employeeId:', employeeId, 'tenantId:', tenantId);
+  // Check if employeeId is UUID or employeeNumber
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(employeeId);
+  console.log('[checkSalaryAdvanceEligibility] isUuid:', isUuid);
+  // Try to find employee by id first, then by employeeNumber
+  let employee = null;
+  if (isUuid) {
+    employee = await prisma.employee.findUnique({
+      where: { id: employeeId, tenantId },
+      select: {
+        id: true,
+        employeeNumber: true,
+        salary: true,
+        hireDate: true,
+        status: true,
+      },
+    });
+  } else {
+    employee = await prisma.employee.findFirst({
+      where: { employeeNumber: employeeId, tenantId },
+      select: {
+        id: true,
+        employeeNumber: true,
+        salary: true,
+        hireDate: true,
+        status: true,
+      },
+    });
+  }
+  console.log('[checkSalaryAdvanceEligibility] employee lookup result:', employee);
   if (!employee) {
     return {
       isEligible: false,

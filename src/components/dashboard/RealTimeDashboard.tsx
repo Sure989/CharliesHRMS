@@ -65,8 +65,7 @@ const RealTimeDashboard: React.FC<RealTimeDashboardProps> = ({
   };
 
   const formatCurrency = (amount?: number) => {
-    if (typeof amount !== 'number' || isNaN(amount)) return 'KES 0';
-    return new Intl.NumberFormat('en-KE', { style: 'currency', currency: 'KES' }).format(amount);
+    return new Intl.NumberFormat('en-KE', { style: 'currency', currency: 'KES', minimumFractionDigits: 0 }).format(amount || 0);
   };
   const formatNumber = (num?: number) => (typeof num === 'number' ? new Intl.NumberFormat().format(num) : '0');
   const getHealthColor = (health?: string) => {
@@ -116,7 +115,7 @@ const RealTimeDashboard: React.FC<RealTimeDashboardProps> = ({
     upcomingLeaves: [],
     departmentLeaveStats: [],
   };
-  const salaryAdvances: DashboardMetrics['salaryAdvances'] = metrics?.salaryAdvances ?? {
+  const salaryAdvances: DashboardMetrics['salaryAdvances'] = metrics?.salaryAdvances || {
     pendingRequests: 0,
     approvedThisMonth: 0,
     totalOutstanding: 0,
@@ -179,7 +178,7 @@ const RealTimeDashboard: React.FC<RealTimeDashboardProps> = ({
       {/* Header with refresh controls */}
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">Dashboard</h2>
+          {/* Removed duplicate title */}
           <p className="text-muted-foreground">
             Last updated: {lastUpdated.toLocaleTimeString()}
           </p>

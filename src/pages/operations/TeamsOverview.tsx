@@ -28,7 +28,7 @@ import {
 } from 'lucide-react';
 import { useState, useMemo, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { api } from '@/services/unifiedApi';
+import { employeeService } from '@/services/api/employee.service';
 import { User } from '@/types/types';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { canAddEmployee, canManageTeamMembers, getRolePermissionsDescription, getRoleDisplayName } from '@/utils/permissions';
@@ -39,25 +39,46 @@ const TeamsOverview = () => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [departmentFilter, setDepartmentFilter] = useState('all');
   const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    api.data.getUsers().then(setUsers);
-  }, []);
+    setLoading(true);
+    setError(null);
+    if (user?.branch) {
+      const userBranch = user && user.branch != null ? (typeof user.branch === 'object' ? (user.branch as any).name : user.branch) : '';
+      employeeService.getEmployeesByBranch(userBranch)
+        .then((members) => {
+          const usersWithRoles = members.map((member) => ({
+            ...member,
+            role: 'EMPLOYEE' as const,
+          }));
+          setUsers(usersWithRoles);
+          setLoading(false);
+        })
+        .catch(() => {
+          setError('Failed to fetch team members.');
+          setUsers([]);
+          setLoading(false);
+        });
+    } else {
+      setUsers([]);
+      setLoading(false);
+    }
+  }, [user?.branch]);
 
-  // Permission checks
   const canAdd = canAddEmployee(user);
   const canManage = canManageTeamMembers(user);
 
-  // Get all employees under the current operations manager's branch
   const branchEmployees = useMemo(() => {
+    const userBranch = user && user.branch != null ? (typeof user.branch === 'object' ? (user.branch as any).name : user.branch) : '';
     return users.filter(
       (employee) => 
-        employee.branch === user?.branch && 
+        employee.branch === userBranch && 
         employee.role === 'EMPLOYEE'
     );
   }, [user?.branch, users]);
 
-  // Filter employees based on search and filters
   const filteredEmployees = useMemo(() => {
     return branchEmployees.filter((employee) => {
       const matchesSearch = 
@@ -73,13 +94,11 @@ const TeamsOverview = () => {
     });
   }, [branchEmployees, searchTerm, statusFilter, departmentFilter]);
 
-  // Get unique departments for filter
   const departments = useMemo(() => {
     const depts = [...new Set(branchEmployees.map(emp => emp.department).filter(Boolean))];
     return depts;
   }, [branchEmployees]);
 
-  // Calculate team statistics
   const teamStats = useMemo(() => {
     const total = branchEmployees.length;
     const active = branchEmployees.filter(emp => emp.status === 'active').length;
@@ -270,7 +289,6 @@ const TeamsOverview = () => {
     </div>
   );
 
-  // Fix role comparison to use correct enum/case
   const filteredUsers = useMemo(() => {
     return users.filter(u => {
       const matchesSearch = `${u.firstName} ${u.lastName}`.toLowerCase().includes(searchTerm.toLowerCase());
@@ -283,43 +301,21 @@ const TeamsOverview = () => {
   return (
     <DashboardLayout title="Teams Overview">
       <div className="space-y-6">
-        {/* Role-based Access Control Information */}
-        <Alert>
-          <Shield className="h-4 w-4" />
-          <AlertDescription>
-            <strong>Your Role: {getRoleDisplayName(user?.role || '')}</strong>
-            <br />
-            {getRolePermissionsDescription(user?.role || '')}
-          </AlertDescription>
-        </Alert>
-
-        {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
-            <h1 className="text-2xl font-bold">Teams Overview</h1>
             <p className="text-muted-foreground">
-              Manage and monitor your team at {user?.branch} branch
+              Manage and monitor your team at {user && user.branch != null ? (typeof user.branch === 'object' ? (user.branch as any).name || 'Unknown' : user.branch || 'Unknown') : 'Unknown'} branch
             </p>
           </div>
-          
           {canAdd ? (
             <Button>
               <UserPlus className="h-4 w-4 mr-2" />
               Add Team Member
             </Button>
-          ) : (
-            <Alert className="w-auto max-w-md">
-              <Info className="h-4 w-4" />
-              <AlertDescription className="text-sm">
-                <strong>Cannot Add Team Members</strong>
-                <br />
-                Only Admin and HR Manager can add new employees. You can manage existing team members assigned to your branch.
-              </AlertDescription>
-            </Alert>
-          )}
+          ) : null}
         </div>
 
-        {/* Statistics Cards */}
+        
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -374,7 +370,7 @@ const TeamsOverview = () => {
           </Card>
         </div>
 
-        {/* Filters and Search */}
+        
         <Card>
           <CardHeader>
             <CardTitle>Team Members</CardTitle>

@@ -182,7 +182,7 @@ class LeaveService {
       const params = new URLSearchParams();
       if (year) params.append('year', year.toString());
 
-      const response = await apiClient.get<LeaveBalance[]>(`/leave/balances/${employeeId}?${params.toString()}`);
+        const response = await apiClient.get<LeaveBalance[]>(`/employees/${employeeId}/leave?${params.toString()}`);
       
       if (response.status === 'success' && response.data) {
         return response.data;

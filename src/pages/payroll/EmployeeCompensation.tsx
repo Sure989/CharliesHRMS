@@ -230,12 +230,7 @@ const EmployeeCompensation = () => {
     <DashboardLayout title="Employee Compensation">
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-bold">Employee Compensation</h1>
-            <p className="text-muted-foreground">Manage employee compensation and Kenyan payroll settings</p>
-          </div>
-        </div>
+        {/* Removed duplicate title */}
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

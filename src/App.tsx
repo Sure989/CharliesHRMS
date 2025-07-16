@@ -42,6 +42,8 @@ import TimeAttendance from "@/pages/payroll/TimeAttendance";
 import PayrollSettings from "@/pages/payroll/PayrollSettings";
 import EmployeePayroll from "@/pages/employee/EmployeePayroll";
 import NotFound from "@/pages/NotFound";
+import OpsManagerLeaveRequestPage from "@/pages/operations/OpsManagerLeaveRequestPage";
+import OpsManagerSalaryAdvancePage from "@/pages/operations/OpsManagerSalaryAdvancePage";
 
 const queryClient = new QueryClient();
 
@@ -169,21 +171,33 @@ const App = () => {
                 <ProtectedRoute allowedRoles={['ADMIN', 'HR_MANAGER', 'OPERATIONS_MANAGER']}>
                   <Routes>
                     <Route path="dashboard" element={<OperationsDashboard />} />
-                    <Route path="leave" element={
-                      <ProtectedRoute requiredPermissions={[PERMISSIONS.OPS_APPROVE_LEAVE]}>
-                        <OperationsLeaveApprovals />
-                      </ProtectedRoute>
-                    } />
-                    <Route path="salary-advances" element={
-                      <ProtectedRoute requiredPermissions={[PERMISSIONS.OPS_APPROVE_SALARY_ADVANCES]}>
-                        <OperationsSalaryAdvances />
-                      </ProtectedRoute>
-                    } />
+<Route path="leave" element={
+  <ProtectedRoute requiredPermissions={[PERMISSIONS.OPS_APPROVE_LEAVE]}>
+    <OperationsLeaveApprovals />
+  </ProtectedRoute>
+} />
+<Route path="salary-advances" element={
+  <ProtectedRoute requiredPermissions={[PERMISSIONS.OPS_APPROVE_SALARY_ADVANCES]}>
+    <OperationsSalaryAdvances />
+  </ProtectedRoute>
+} />
                     <Route path="team" element={
                       <ProtectedRoute requiredPermissions={[PERMISSIONS.OPS_MANAGE_EMPLOYEES]}>
                         <TeamsOverview />
                       </ProtectedRoute>
                     } />
+                    <Route path="leave-request" element={
+                      <ProtectedRoute requiredPermissions={[PERMISSIONS.OPS_APPROVE_LEAVE]}>
+                        <OpsManagerLeaveRequestPage />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="salary-advance-request" element={
+                      <ProtectedRoute requiredPermissions={[PERMISSIONS.OPS_APPROVE_SALARY_ADVANCES]}>
+                        <OpsManagerSalaryAdvancePage />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="my-leave-requests" element={<OpsManagerLeaveRequestPage />} />
+                    <Route path="my-salary-advance" element={<OpsManagerSalaryAdvancePage />} />
                   </Routes>
                 </ProtectedRoute>
               } />

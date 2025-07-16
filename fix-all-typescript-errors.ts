@@ -1,17 +1,17 @@
 #!/usr/bin/env node
 
-const fs = require('fs');
-const path = require('path');
+import fs from 'fs';
+import path from 'path';
 
 console.log('🔧 Fixing all TypeScript errors...\n');
 
 // Remove any phantom files that might be causing issues
-const phantomFiles = [
+const phantomFiles: string[] = [
   'src/services/unifiedApi.new.ts',
   'src/services/unifiedApi.old.ts'
 ];
 
-phantomFiles.forEach(file => {
+phantomFiles.forEach((file: string) => {
   if (fs.existsSync(file)) {
     fs.unlinkSync(file);
     console.log(`✅ Removed phantom file: ${file}`);

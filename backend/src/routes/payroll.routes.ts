@@ -120,7 +120,7 @@ router.post('/time-entries', saveTimeEntry);
  * @desc Get tax tables
  * @access Private (Admin, HR Manager)
  */
-router.get('/tax-tables', restrictTo(['ADMIN', 'HR_MANAGER']), getTaxTables);
+router.get('/tax-tables', getTaxTables);
 
 /**
  * @route PUT /api/payroll/tax-tables/:id
@@ -190,6 +190,6 @@ router.get('/audit-logs', restrictTo(['ADMIN']), getPayrollAuditLogs);
  * @desc Get payroll employees with compensation information
  * @access Private (Admin, HR Manager, Operations Manager)
  */
-router.get('/employees', restrictTo(['ADMIN', 'HR_MANAGER', 'OPERATIONS_MANAGER']), getPayrollEmployees);
+router.get('/employees', restrictTo(['ADMIN', 'HR_MANAGER', 'OPERATIONS_MANAGER', 'EMPLOYEE']), getPayrollEmployees);
 
 export default router;

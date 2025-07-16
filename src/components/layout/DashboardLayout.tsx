@@ -70,8 +70,8 @@ const DashboardLayout = ({ children, title }: DashboardLayoutProps) => {
         { name: 'Leave Approvals', href: '/operations/leave', icon: Calendar },
         { name: 'Salary Advance Reviews', href: '/operations/salary-advances', icon: DollarSign },
         { name: 'Team Overview', href: '/operations/team', icon: Users },
-        { name: 'My Leave Requests', href: '/employee/leave', icon: Calendar },
-        { name: 'My Salary Advance', href: '/employee/salary-advance', icon: DollarSign },
+        { name: 'My Leave Requests', href: '/operations/my-leave-requests', icon: Calendar },
+        { name: 'My Salary Advance', href: '/operations/my-salary-advance', icon: DollarSign },
         { name: 'My Payroll', href: '/employee/payroll', icon: Calculator },
       ];
     } else {

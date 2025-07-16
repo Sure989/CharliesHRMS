@@ -19,7 +19,7 @@ const EmployeeProfile = () => {
     email: user?.email || '',
     phone: user?.phone || '',
     employeeId: user?.employeeId || '',
-    branch: user?.branch || '',
+    branch: user && user.branch != null && user.branch !== '' ? (typeof user.branch === 'object' ? (user.branch as any).name || '' : user.branch) : 'Not assigned',
     hireDate: user?.hireDate || '',
   });
 
@@ -39,7 +39,7 @@ const EmployeeProfile = () => {
       email: user?.email || '',
       phone: user?.phone || '',
       employeeId: user?.employeeId || '',
-      branch: user?.branch || '',
+      branch: user && user.branch != null ? (typeof user.branch === 'object' ? (user.branch as any).name || '' : user.branch) : '',
       hireDate: user?.hireDate || '',
     });
     setIsEditing(false);

@@ -57,7 +57,7 @@ export interface User {
   profilePicture?: string;
   phone?: string;
   hireDate?: string;
-  status?: 'active' | 'inactive' | 'suspended';
+  status?: 'active' | 'inactive' | 'suspended' | 'terminated';
   position?: string;
   lastLogin?: string;
   permissions?: string[];

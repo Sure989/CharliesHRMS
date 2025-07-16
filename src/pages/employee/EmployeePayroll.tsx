@@ -71,42 +71,20 @@ const EmployeePayroll = () => {
   useEffect(() => {
     const loadPayrollData = async () => {
       if (!user?.employeeId) return;
-      
       try {
         setLoading(true);
-        
         // Load employee info and pay stubs
         const [employeeData, generatedPayStubs] = await Promise.all([
           PayrollDataService.getEmployeeInfo(user),
           PayrollDataService.generateEmployeePayStubs(user, selectedYear)
         ]);
-        
-        setEmployeeInfo(employeeData || {
-          id: 'EMP001',
-          name: 'Demo Employee',
-          employeeId: 'EMP001',
-          department: 'Operations',
-          position: 'Staff Member',
-          branch: 'Head Office',
-          hireDate: '2023-01-15',
-          payFrequency: 'Monthly',
-          paymentMethod: 'Bank Transfer',
-          bankAccount: '****1234',
-          kraPin: 'A123456789Z',
-          nssfNumber: 'NSSF123456',
-          nhifNumber: 'NHIF123456',
-          monthlySalary: 65000,
-          employeeType: 'salaried'
-        });
-        
+        setEmployeeInfo(employeeData || null);
         setPayStubs(generatedPayStubs);
-        
         toast({
           title: "Success",
           description: "Payroll data loaded successfully.",
           variant: "default"
         });
-        
       } catch (error) {
         console.error('Failed to load payroll data:', error);
         toast({
@@ -118,22 +96,21 @@ const EmployeePayroll = () => {
         setLoading(false);
       }
     };
-
     loadPayrollData();
   }, [user, selectedYear, toast]);
 
   // Calculate YTD totals from pay stubs
   const payrollSummary = {
     currentYear: parseInt(selectedYear),
-    ytdGrossPay: payStubs.reduce((sum, stub) => sum + stub.grossPay, 0),
-    ytdNetPay: payStubs.reduce((sum, stub) => sum + stub.netPay, 0),
-    ytdPaye: payStubs.reduce((sum, stub) => sum + stub.paye, 0),
-    ytdNssf: payStubs.reduce((sum, stub) => sum + stub.nssf, 0),
-    ytdNhif: payStubs.reduce((sum, stub) => sum + stub.nhif, 0),
-    ytdOtherDeductions: payStubs.reduce((sum, stub) => sum + stub.totalOtherDeductions, 0),
-    lastPayAmount: payStubs.length > 0 ? payStubs[0].netPay : 0,
-    lastPayDate: payStubs.length > 0 ? payStubs[0].payDate : '',
-    nextPayDate: '2025-01-31' // Next month
+    ytdGrossPay: payStubs && payStubs.length > 0 ? payStubs.reduce((sum, stub) => sum + (stub.grossPay || 0), 0) : 0,
+    ytdNetPay: payStubs && payStubs.length > 0 ? payStubs.reduce((sum, stub) => sum + (stub.netPay || 0), 0) : 0,
+    ytdPaye: payStubs && payStubs.length > 0 ? payStubs.reduce((sum, stub) => sum + (stub.paye || 0), 0) : 0,
+    ytdNssf: payStubs && payStubs.length > 0 ? payStubs.reduce((sum, stub) => sum + (stub.nssf || 0), 0) : 0,
+    ytdNhif: payStubs && payStubs.length > 0 ? payStubs.reduce((sum, stub) => sum + (stub.nhif || 0), 0) : 0,
+    ytdOtherDeductions: payStubs && payStubs.length > 0 ? payStubs.reduce((sum, stub) => sum + (stub.totalOtherDeductions || 0), 0) : 0,
+    lastPayAmount: payStubs && payStubs.length > 0 ? (payStubs[0].netPay || 0) : 0,
+    lastPayDate: payStubs && payStubs.length > 0 ? (payStubs[0].payDate || '') : '',
+    nextPayDate: ''
   };
 
   const taxDocuments = [
@@ -245,7 +222,7 @@ const EmployeePayroll = () => {
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
             <Clock className="h-8 w-8 animate-spin mx-auto mb-4" />
-            <p>Loading payroll data...</p>
+            <p>{loading ? 'Loading payroll data...' : 'No payroll data found for this employee.'}</p>
           </div>
         </div>
       </DashboardLayout>

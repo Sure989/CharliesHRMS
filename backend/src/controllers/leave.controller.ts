@@ -130,6 +130,7 @@ export const submitLeaveRequest = async (req: Request, res: Response) => {
       });
     }
 
+
     const start = new Date(startDate);
     const end = new Date(endDate);
 
@@ -153,6 +154,52 @@ export const submitLeaveRequest = async (req: Request, res: Response) => {
     // Calculate working days
     const totalDays = await calculateWorkingDays(start, end, req.tenantId);
 
+    // Find approver: branch manager or HR, but if employee is ops manager, always HR
+    const employee = await prisma.employee.findFirst({
+      where: { id: employeeId, tenantId: req.tenantId },
+      include: { user: true },
+    });
+    let approverId = null;
+    let approverRole = null;
+    // If employee is ops manager, route to HR
+    if (employee?.user?.role === 'OPS_MANAGER' || employee?.position === 'Operations Manager') {
+      const hrUser = await prisma.user.findFirst({
+        where: { tenantId: req.tenantId, role: 'HR' },
+      });
+      if (hrUser) {
+        approverId = hrUser.id;
+        approverRole = 'HR';
+      }
+    } else if (employee?.branchId) {
+      // Get branch and managerId
+      const branch = await prisma.branch.findFirst({
+        where: { id: employee.branchId, tenantId: req.tenantId },
+      });
+      if (branch?.managerId) {
+        approverId = branch.managerId;
+        approverRole = 'BRANCH_MANAGER';
+      }
+      if (!approverId) {
+        // Fallback to HR
+        const hrUser = await prisma.user.findFirst({
+          where: { tenantId: req.tenantId, role: 'HR' },
+        });
+        if (hrUser) {
+          approverId = hrUser.id;
+          approverRole = 'HR';
+        }
+      }
+    } else {
+      // No branch, fallback to HR
+      const hrUser = await prisma.user.findFirst({
+        where: { tenantId: req.tenantId, role: 'HR' },
+      });
+      if (hrUser) {
+        approverId = hrUser.id;
+        approverRole = 'HR';
+      }
+    }
+
     const leaveRequest = await prisma.leaveRequest.create({
       data: {
         employeeId,
@@ -162,6 +209,7 @@ export const submitLeaveRequest = async (req: Request, res: Response) => {
         totalDays,
         reason,
         tenantId: req.tenantId,
+        comments: approverRole ? `Routed to ${approverRole}` : undefined,
       },
       include: {
         employee: {
@@ -181,6 +229,8 @@ export const submitLeaveRequest = async (req: Request, res: Response) => {
         },
       },
     });
+
+    // Optionally, notify the approver (implement notification logic here if model exists)
 
     // Update leave balance
     const year = start.getFullYear();
@@ -308,6 +358,8 @@ export const processLeaveRequest = async (req: Request, res: Response) => {
         },
       },
     });
+
+    // Optionally, notify the employee (implement notification logic here if model exists)
 
     return res.status(200).json({
       status: 'success',

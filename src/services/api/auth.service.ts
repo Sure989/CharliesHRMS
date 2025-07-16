@@ -289,6 +289,31 @@ class AuthService {
   }
 
   /**
+   * Get authentication token
+   */
+  getToken(): string | null {
+    return TokenManager.getToken();
+  }
+
+  /**
+   * Get refresh token
+   */
+  getRefreshToken(): string | null {
+    return TokenManager.getRefreshToken();
+  }
+
+  /**
+   * Set authentication data
+   */
+  setAuthData(data: { token: string; user: User; refreshToken?: string }): void {
+    TokenManager.setToken(data.token);
+    TokenManager.setUserData(data.user);
+    if (data.refreshToken) {
+      TokenManager.setRefreshToken(data.refreshToken);
+    }
+  }
+
+  /**
    * Check if user has specific permission
    */
   hasPermission(permission: string): boolean {

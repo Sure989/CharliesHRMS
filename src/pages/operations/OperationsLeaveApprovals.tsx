@@ -9,11 +9,15 @@ import { Label } from '@/components/ui/label';
 import { useState, useEffect } from 'react';
 import { Check, X, Eye, Calendar, Clock, ArrowRight } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { api } from '@/services/unifiedApi';
+import { leaveService } from '@/services/api/leave.service';
 import { LeaveRequest } from '@/types/types';
+// Update the import path if the file exists elsewhere, for example:
+import { useAuth } from '@/contexts/AuthContext';
+// Or correct the path as needed based on your project structure.
 
 const OperationsLeaveApprovals = () => {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [selectedRequest, setSelectedRequest] = useState<LeaveRequest | null>(null);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const [approvalComments, setApprovalComments] = useState('');
@@ -25,8 +29,39 @@ const OperationsLeaveApprovals = () => {
     const loadLeaveRequests = async () => {
       try {
         setLoading(true);
-        const requests = await api.data.getLeaveRequests('operations');
-        setLeaveRequests(requests);
+        const response = await leaveService.getLeaveRequests({ department: user?.branch ?? '' });
+        const data = response.data || [];
+        const requests = Array.isArray(data) ? data.map((apiReq: any) => ({
+          id: apiReq.id,
+          employeeId: apiReq.employeeId,
+          employeeName: apiReq.employee?.firstName && apiReq.employee?.lastName ? `${apiReq.employee.firstName} ${apiReq.employee.lastName}` : '',
+          branch: apiReq.employee?.department || '',
+          leaveType: apiReq.leaveType?.name || '',
+          startDate: apiReq.startDate,
+          endDate: apiReq.endDate,
+          days: apiReq.totalDays || 0,
+          reason: apiReq.reason,
+          status: apiReq.status,
+          submissionDate: apiReq.appliedDate || apiReq.createdAt,
+          opsManagerId: apiReq.approvedBy || '',
+          opsManagerName: apiReq.approver ? `${apiReq.approver.firstName} ${apiReq.approver.lastName}` : '',
+          opsInitialDate: apiReq.createdAt,
+          opsInitialComments: '',
+          hrReviewerId: '',
+          hrReviewerName: '',
+          hrReviewDate: '',
+          hrDecision: '',
+          hrComments: '',
+          opsFinalDate: apiReq.updatedAt,
+          opsFinalDecision: '',
+          opsFinalComments: '',
+          currentStep: apiReq.status,
+          workflowHistory: [],
+        })) : [];
+        // Only show requests for employees with a branch matching the manager's branch
+        const userBranch = user && user.branch != null ? (typeof user.branch === 'object' ? (user.branch as any).name : user.branch) : '';
+        const filtered = userBranch ? requests.filter(r => r.branch && r.branch === userBranch) : [];
+        setLeaveRequests(filtered);
       } catch (error) {
         console.error('Failed to load leave requests:', error);
         toast({
@@ -34,127 +69,58 @@ const OperationsLeaveApprovals = () => {
           description: "Failed to load leave requests from the server.",
           variant: "destructive"
         });
-        setLeaveRequests([]); // No mock data fallback
+        setLeaveRequests([]);
       } finally {
         setLoading(false);
       }
     };
-
     loadLeaveRequests();
-  }, [toast]);
+  }, [toast, user]);
 
+  // Single correct approval handler for branch manager logic
   const handleApproval = async (requestId: string, approved: boolean) => {
     try {
       if (approved) {
-        await api.data.approveLeaveRequest(requestId, 'operations', approvalComments);
-        
-        setLeaveRequests(requests => 
-          requests.map(request => {
-            if (request.id === requestId) {
-              return {
-                ...request,
-                status: 'forwarded_to_hr',
-                opsManagerName: 'Current Operations Manager',
-                opsInitialDate: new Date().toISOString().split('T')[0],
-                opsInitialComments: approvalComments || 'Approved by operations',
-                currentStep: 'hr_review'
-              };
-            }
-            return request;
-          })
+        await leaveService.approveLeaveRequest({ requestId, approverId: user?.id, comments: approvalComments });
+        setLeaveRequests(requests =>
+          requests.map(request =>
+            request.id === requestId
+              ? {
+                  ...request,
+                  status: 'ops_final_approved',
+                  opsFinalDate: new Date().toISOString().split('T')[0],
+                  opsFinalDecision: 'approved',
+                  opsFinalComments: approvalComments || 'Approved by branch manager',
+                  currentStep: 'completed'
+                }
+              : request
+          )
         );
-        
         toast({
           title: "Request Approved",
-          description: "Leave request has been approved and forwarded to HR for eligibility review."
+          description: "Leave request has been approved. The employee will be notified."
         });
       } else {
-        await api.data.rejectLeaveRequest(requestId, 'operations', approvalComments);
-        
-        setLeaveRequests(requests => 
-          requests.map(request => {
-            if (request.id === requestId) {
-              return {
-                ...request,
-                status: 'ops_final_rejected',
-                opsManagerName: 'Current Operations Manager',
-                opsInitialDate: new Date().toISOString().split('T')[0],
-                opsInitialComments: approvalComments || 'Rejected by operations',
-                currentStep: 'completed'
-              };
-            }
-            return request;
-          })
+        await leaveService.rejectLeaveRequest({ requestId, approverId: user?.id, rejectionReason: approvalComments || 'Rejected by branch manager' });
+        setLeaveRequests(requests =>
+          requests.map(request =>
+            request.id === requestId
+              ? {
+                  ...request,
+                  status: 'ops_final_rejected',
+                  opsFinalDate: new Date().toISOString().split('T')[0],
+                  opsFinalDecision: 'rejected',
+                  opsFinalComments: approvalComments || 'Rejected by branch manager',
+                  currentStep: 'completed'
+                }
+              : request
+          )
         );
-        
         toast({
           title: "Request Rejected",
-          description: "Leave request has been rejected."
+          description: "Leave request has been rejected. The employee will be notified."
         });
       }
-      
-      setApprovalComments('');
-      setIsViewDialogOpen(false);
-    } catch (error) {
-      console.error('Failed to update leave request:', error);
-      toast({
-        title: "Error",
-        description: "Failed to update leave request. Please try again.",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const handleFinalApproval = async (requestId: string, approved: boolean) => {
-    try {
-      if (approved) {
-        await api.data.approveLeaveRequest(requestId, 'operations', approvalComments);
-        
-        setLeaveRequests(requests => 
-          requests.map(request => {
-            if (request.id === requestId) {
-              return {
-                ...request,
-                status: 'ops_final_approved',
-                opsFinalDate: new Date().toISOString().split('T')[0],
-                opsFinalDecision: 'approved',
-                opsFinalComments: approvalComments || 'Final approval granted',
-                currentStep: 'completed'
-              };
-            }
-            return request;
-          })
-        );
-        
-        toast({
-          title: "Final Approval Granted",
-          description: "Leave request has been given final approval."
-        });
-      } else {
-        await api.data.rejectLeaveRequest(requestId, 'operations', approvalComments);
-        
-        setLeaveRequests(requests => 
-          requests.map(request => {
-            if (request.id === requestId) {
-              return {
-                ...request,
-                status: 'ops_final_rejected',
-                opsFinalDate: new Date().toISOString().split('T')[0],
-                opsFinalDecision: 'rejected',
-                opsFinalComments: approvalComments || 'Final approval denied',
-                currentStep: 'completed'
-              };
-            }
-            return request;
-          })
-        );
-        
-        toast({
-          title: "Final Approval Denied",
-          description: "Leave request has been denied final approval."
-        });
-      }
-      
       setApprovalComments('');
       setIsViewDialogOpen(false);
     } catch (error) {
@@ -198,8 +164,9 @@ const OperationsLeaveApprovals = () => {
   };
 
   const pendingInitialRequests = leaveRequests.filter(r => r.status === 'pending_ops_initial');
-  const forwardedRequests = leaveRequests.filter(r => r.status === 'forwarded_to_hr');
-  const pendingFinalRequests = leaveRequests.filter(r => r.status === 'hr_approved');
+  // Remove HR and final approval states for ops manager
+  const forwardedRequests: LeaveRequest[] = [];
+  const pendingFinalRequests: LeaveRequest[] = [];
   const completedRequests = leaveRequests.filter(r => r.status === 'ops_final_approved' || r.status === 'ops_final_rejected');
 
   if (loading) {
@@ -219,11 +186,9 @@ const OperationsLeaveApprovals = () => {
     <DashboardLayout title="Leave Approvals - Operations">
       <div className="space-y-6">
         <div>
-          <h2 className="text-2xl font-bold">Operations Leave Management</h2>
-          <p className="text-muted-foreground">Initial review and final approval of team leave requests</p>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-4">
+        <div className="grid gap-4 md:grid-cols-2">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Pending Initial Review</CardTitle>
@@ -232,26 +197,6 @@ const OperationsLeaveApprovals = () => {
             <CardContent>
               <div className="text-2xl font-bold text-orange-600">{pendingInitialRequests.length}</div>
               <p className="text-xs text-muted-foreground">Awaiting your review</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Forwarded to HR</CardTitle>
-              <ArrowRight className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-blue-600">{forwardedRequests.length}</div>
-              <p className="text-xs text-muted-foreground">Under HR review</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Pending Final Approval</CardTitle>
-              <Check className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600">{pendingFinalRequests.length}</div>
-              <p className="text-xs text-muted-foreground">HR approved, awaiting final decision</p>
             </CardContent>
           </Card>
           <Card>
@@ -276,7 +221,6 @@ const OperationsLeaveApprovals = () => {
               <TableHeader>
                 <TableRow>
                   <TableHead>Employee</TableHead>
-                  <TableHead>Branch</TableHead>
                   <TableHead>Leave Type</TableHead>
                   <TableHead>Dates</TableHead>
                   <TableHead>Days</TableHead>
@@ -294,7 +238,6 @@ const OperationsLeaveApprovals = () => {
                         <div className="text-sm text-muted-foreground">{request.employeeId}</div>
                       </div>
                     </TableCell>
-                    <TableCell>{request.branch}</TableCell>
                     <TableCell>{getLeaveTypeBadge(request.leaveType)}</TableCell>
                     <TableCell>
                       <div className="text-sm">
@@ -307,22 +250,9 @@ const OperationsLeaveApprovals = () => {
                     <TableCell>
                       <div className="flex items-center space-x-1 text-xs">
                         <div className={`w-2 h-2 rounded-full ${
-                          request.currentStep !== 'ops_initial' ? 'bg-green-500' : 'bg-yellow-500'
+                          request.currentStep === 'completed' ? 'bg-green-500' : 'bg-yellow-500'
                         }`}></div>
                         <span>Ops</span>
-                        <ArrowRight className="h-3 w-3" />
-                        <div className={`w-2 h-2 rounded-full ${
-                          request.currentStep === 'completed' ? 'bg-green-500' :
-                          request.currentStep === 'ops_final' ? 'bg-yellow-500' :
-                          request.currentStep === 'hr_review' ? 'bg-yellow-500' : 'bg-gray-300'
-                        }`}></div>
-                        <span>HR</span>
-                        <ArrowRight className="h-3 w-3" />
-                        <div className={`w-2 h-2 rounded-full ${
-                          request.currentStep === 'completed' ? 'bg-green-500' :
-                          request.currentStep === 'ops_final' ? 'bg-yellow-500' : 'bg-gray-300'
-                        }`}></div>
-                        <span>Final</span>
                       </div>
                     </TableCell>
                     <TableCell>
@@ -357,26 +287,7 @@ const OperationsLeaveApprovals = () => {
                             </Button>
                           </>
                         )}
-                        {request.status === 'hr_approved' && (
-                          <>
-                            <Button
-                              size="sm"
-                              onClick={() => handleFinalApproval(request.id, true)}
-                              className="bg-blue-600 hover:bg-blue-700"
-                            >
-                              <Check className="h-4 w-4 mr-1" />
-                              Final Approve
-                            </Button>
-                            <Button
-                              variant="destructive"
-                              size="sm"
-                              onClick={() => handleFinalApproval(request.id, false)}
-                            >
-                              <X className="h-4 w-4 mr-1" />
-                              Final Reject
-                            </Button>
-                          </>
-                        )}
+                        {/* Only show Approve/Reject for pending_ops_initial, nothing for other statuses */}
                       </div>
                     </TableCell>
                   </TableRow>
@@ -397,14 +308,10 @@ const OperationsLeaveApprovals = () => {
             </DialogHeader>
             {selectedRequest && (
               <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4">
                   <div>
                     <Label>Employee</Label>
                     <p className="text-sm">{selectedRequest.employeeName} ({selectedRequest.employeeId})</p>
-                  </div>
-                  <div>
-                    <Label>Branch</Label>
-                    <p className="text-sm">{selectedRequest.branch}</p>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
@@ -527,7 +434,7 @@ const OperationsLeaveApprovals = () => {
                   </div>
                 )}
 
-                {(selectedRequest.status === 'pending_ops_initial' || selectedRequest.status === 'hr_approved') && (
+                {selectedRequest.status === 'pending_ops_initial' && (
                   <div className="border-t pt-4">
                     <Label htmlFor="comments">Comments (Optional)</Label>
                     <Textarea
@@ -557,25 +464,7 @@ const OperationsLeaveApprovals = () => {
                     className="bg-green-600 hover:bg-green-700"
                   >
                     <Check className="h-4 w-4 mr-2" />
-                    Approve & Forward to HR
-                  </Button>
-                </>
-              ) : selectedRequest?.status === 'hr_approved' ? (
-                <>
-                  <Button
-                    variant="outline"
-                    onClick={() => handleFinalApproval(selectedRequest.id, false)}
-                    className="text-red-600 hover:text-red-700"
-                  >
-                    <X className="h-4 w-4 mr-2" />
-                    Final Reject
-                  </Button>
-                  <Button
-                    onClick={() => handleFinalApproval(selectedRequest.id, true)}
-                    className="bg-blue-600 hover:bg-blue-700"
-                  >
-                    <Check className="h-4 w-4 mr-2" />
-                    Final Approve
+                    Approve
                   </Button>
                 </>
               ) : (
