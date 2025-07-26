@@ -14,11 +14,13 @@ model Tenant {
   createdAt               DateTime                 @default(now())
   updatedAt               DateTime                 @default(now())
   approvals               Approval[]
+  notifications           Notification[]
   auditLogs               AuditLog[]
   branches                Branch[]
   dashboards              Dashboard[]
   departments             Department[]
   employees               Employee[]
+  experimentalFeatures    ExperimentalFeature[]
   holidays                Holiday[]
   integrationLogs         IntegrationLog[]
   integrations            Integration[]
@@ -49,9 +51,27 @@ model Tenant {
   workflowStats           WorkflowStats[]
   workflowTemplates       WorkflowTemplate[]
   workflows               Workflow[]
-  experimentalFeatures    ExperimentalFeature[]
 
   @@map("tenants")
+}
+model Notification {
+  id          String   @id @default(uuid())
+  userId      String
+  type        String
+  title       String
+  message     String
+  timestamp   DateTime @default(now())
+  read        Boolean  @default(false)
+  actionUrl   String?
+  actionLabel String?
+  module      String?
+  tenantId    String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([tenantId])
+  @@map("notifications")
 }
 
 model User {
@@ -72,6 +92,7 @@ model User {
   sessions           UserSession[]
   employee           Employee?     @relation(fields: [employeeId], references: [id])
   tenant             Tenant        @relation(fields: [tenantId], references: [id])
+  notifications      Notification[]
 
   @@index([email])
   @@index([tenantId])
@@ -116,7 +137,8 @@ model Branch {
   name          String
   location      String?
   address       String?
-  managerId     String?
+  managerId     String?    // Existing: maps to Employee ID
+  managerUserId String?    // New: maps to User ID
   departmentId  String
   employeeCount Int        @default(0)
   status        String     @default("ACTIVE")
@@ -126,6 +148,8 @@ model Branch {
   department    Department @relation(fields: [departmentId], references: [id])
   tenant        Tenant     @relation(fields: [tenantId], references: [id])
   employees     Employee[]
+  leaveRequests LeaveRequest[]
+  salaryAdvanceRequests SalaryAdvanceRequest[]
 
   @@unique([name, tenantId])
   @@index([departmentId])
@@ -366,6 +390,7 @@ model LeavePolicy {
 model LeaveRequest {
   id              String    @id @default(uuid())
   employeeId      String
+  branchId        String?
   leaveTypeId     String
   startDate       DateTime
   endDate         DateTime
@@ -386,10 +411,12 @@ model LeaveRequest {
   updatedAt       DateTime  @default(now())
   tenantId        String
   employee        Employee  @relation(fields: [employeeId], references: [id])
+  branch          Branch?   @relation(fields: [branchId], references: [id])
   leaveType       LeaveType @relation(fields: [leaveTypeId], references: [id])
   tenant          Tenant    @relation(fields: [tenantId], references: [id])
 
   @@index([employeeId])
+  @@index([branchId])
   @@index([leaveTypeId])
   @@index([status])
   @@index([startDate, endDate])
@@ -691,6 +718,7 @@ model SalaryAdvancePolicy {
 model SalaryAdvanceRequest {
   id                 String                   @id @default(uuid())
   employeeId         String
+  branchId           String?
   requestedAmount    Float
   approvedAmount     Float?
   reason             String
@@ -717,9 +745,11 @@ model SalaryAdvanceRequest {
   tenantId           String
   repayments         SalaryAdvanceRepayment[]
   employee           Employee                 @relation(fields: [employeeId], references: [id])
+  branch             Branch?                  @relation(fields: [branchId], references: [id])
   tenant             Tenant                   @relation(fields: [tenantId], references: [id])
 
   @@index([employeeId])
+  @@index([branchId])
   @@index([status])
   @@index([requestDate])
   @@index([tenantId])
@@ -817,7 +847,7 @@ model WorkflowTemplate {
 }
 
 model Training {
-  id            String              @id @default(uuid())
+  id            String               @id @default(uuid())
   tenantId      String
   title         String
   description   String?
@@ -828,13 +858,13 @@ model Training {
   instructor    String?
   venue         String?
   requirements  String[]
-  certification Boolean             @default(false)
+  certification Boolean              @default(false)
   cost          Decimal?
   category      String?
-  createdAt     DateTime            @default(now())
-  updatedAt     DateTime            @default(now())
-  tenant        Tenant              @relation(fields: [tenantId], references: [id])
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @default(now())
   enrollments   TrainingEnrollment[]
+  tenant        Tenant               @relation(fields: [tenantId], references: [id])
 
   @@index([tenantId])
   @@map("trainings")
@@ -852,8 +882,8 @@ model TrainingEnrollment {
   certificateIssued Boolean   @default(false)
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @default(now())
-  training          Training  @relation(fields: [trainingId], references: [id], onDelete: Cascade)
   employee          Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  training          Training  @relation(fields: [trainingId], references: [id], onDelete: Cascade)
 
   @@unique([trainingId, employeeId])
   @@index([trainingId])
@@ -955,7 +985,7 @@ model ExperimentalFeature {
   createdBy   String?
   tenantId    String
   tenant      Tenant   @relation(fields: [tenantId], references: [id])
-  
+
   @@index([tenantId])
   @@index([key])
   @@map("experimental_features")

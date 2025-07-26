@@ -114,56 +114,38 @@ export async function checkSalaryAdvanceEligibility(
     };
   }
 
-  // Check existing advances this year
+  // Check existing advances this month (instead of year)
+  const currentMonth = new Date().getMonth();
   const currentYear = new Date().getFullYear();
-  const yearStart = new Date(currentYear, 0, 1);
-  const yearEnd = new Date(currentYear, 11, 31);
+  const monthStart = new Date(currentYear, currentMonth, 1);
+  const monthEnd = new Date(currentYear, currentMonth + 1, 0);
 
-  const existingAdvances = await prisma.salaryAdvanceRequest.count({
+  const existingAdvancesThisMonth = await prisma.salaryAdvanceRequest.aggregate({
     where: {
       employeeId,
       tenantId,
-      status: { in: ['APPROVED', 'DISBURSED'] },
-      requestDate: { gte: yearStart, lte: yearEnd },
+      status: { in: ['APPROVED', 'DISBURSED', 'PENDING'] },
+      requestDate: { gte: monthStart, lte: monthEnd },
+    },
+    _sum: {
+      requestedAmount: true,
     },
   });
 
-  if (existingAdvances >= policy.maxAdvancesPerYear) {
-    return {
-      isEligible: false,
-      reason: `Maximum ${policy.maxAdvancesPerYear} advances per year exceeded`,
-      existingAdvances,
-      maxAdvancesPerYear: policy.maxAdvancesPerYear,
-    };
-  }
+  const totalRequestedThisMonth = existingAdvancesThisMonth._sum.requestedAmount || 0;
 
-  // Check outstanding advances
-  const outstandingAdvances = await prisma.salaryAdvanceRequest.findMany({
-    where: {
-      employeeId,
-      tenantId,
-      status: { in: ['DISBURSED'] },
-      outstandingBalance: { gt: 0 },
-    },
-  });
-
-  if (outstandingAdvances.length > 0) {
-    return {
-      isEligible: false,
-      reason: 'Employee has outstanding salary advance(s)',
-    };
-  }
-
-  // Calculate maximum allowed amount
+  // Calculate maximum allowed amount (25% of basic salary)
   const maxPercentageAmount = (employee.salary * policy.maxAdvancePercentage) / 100;
   const maxAmount = policy.maxAdvanceAmount
     ? Math.min(maxPercentageAmount, policy.maxAdvanceAmount)
     : maxPercentageAmount;
 
-  if (requestedAmount > maxAmount) {
+  // Check if requested amount would exceed monthly limit
+  const availableAmount = maxAmount - totalRequestedThisMonth;
+  if (requestedAmount > availableAmount) {
     return {
       isEligible: false,
-      reason: `Requested amount exceeds maximum allowed (${maxAmount})`,
+      reason: `Requested amount would exceed monthly limit. Available: ${availableAmount.toFixed(2)} (${policy.maxAdvancePercentage}% of salary: ${maxAmount.toFixed(2)}, already requested this month: ${totalRequestedThisMonth.toFixed(2)})`,
       maxAmount,
     };
   }
@@ -172,7 +154,7 @@ export async function checkSalaryAdvanceEligibility(
     isEligible: true,
     maxAmount,
     serviceMonths,
-    existingAdvances,
+    existingAdvances: totalRequestedThisMonth,
     maxAdvancesPerYear: policy.maxAdvancesPerYear,
   };
 }
@@ -282,15 +264,42 @@ export async function createSalaryAdvanceRequest(
     orderBy: { effectiveDate: 'desc' },
   });
 
-  const status = policy?.autoApprove ? 'APPROVED' : 'PENDING';
+  let status: string;
+  if (policy?.autoApprove) {
+    status = 'APPROVED';
+  } else {
+    // Fetch employee record with branch and position
+    const employeeRecord = await prisma.employee.findUnique({
+      where: { id: employeeId, tenantId },
+      select: { branchId: true, position: true },
+    });
+    const isBranchManager = employeeRecord?.position === 'OPERATIONS_MANAGER' || employeeRecord?.position === 'BRANCH_MANAGER';
+    if (!employeeRecord?.branchId || isBranchManager) {
+      status = 'PENDINGHRREVIEW';
+    } else {
+      status = 'PENDINGOPREVIEW';
+    }
+  }
   const approvedAmount = policy?.autoApprove ? requestedAmount : null;
   const approvedAt = policy?.autoApprove ? new Date() : null;
 
   // Create the request
+  // Determine if this is a self-request by an operations manager
+  // Fetch employee record with branch and position (for both approval logic and branchId)
+  const employeeRecord = await prisma.employee.findUnique({
+    where: { id: employeeId, tenantId },
+    select: { branchId: true, position: true },
+  });
+  let opsManagerId: string | null = null;
+  if (employeeRecord && employeeRecord.position === 'OPERATIONS_MANAGER') {
+    opsManagerId = employeeId;
+  }
+  const branchId = employeeRecord?.branchId || null;
   const salaryAdvanceRequest = await prisma.salaryAdvanceRequest.create({
     data: {
       employeeId,
       tenantId,
+      branchId,
       requestedAmount,
       approvedAmount,
       reason,
@@ -302,6 +311,7 @@ export async function createSalaryAdvanceRequest(
       interestRate: calculation.interestRate,
       totalInterest: calculation.totalInterest,
       attachments,
+      ...(opsManagerId ? { opsManagerId } : {}),
     },
     include: {
       employee: {
@@ -326,7 +336,7 @@ export async function createSalaryAdvanceRequest(
 export async function processSalaryAdvanceRequest(
   requestId: string,
   tenantId: string,
-  decision: 'APPROVED' | 'REJECTED',
+  decision: 'APPROVED' | 'REJECTED' | 'FORWARDEDTOHR',
   processedBy: string,
   data: {
     approvedAmount?: number;
@@ -343,73 +353,92 @@ export async function processSalaryAdvanceRequest(
     throw new Error('Salary advance request not found');
   }
 
-  if (request.status !== 'PENDING') {
-    throw new Error('Request has already been processed');
-  }
-
-  if (decision === 'APPROVED') {
-    const approvedAmount = data.approvedAmount || request.requestedAmount;
-    
-    // Recalculate repayment if approved amount is different
-    let calculation = null;
-    if (approvedAmount !== request.requestedAmount) {
-      calculation = await calculateSalaryAdvanceRepayment(
-        request.employeeId,
-        tenantId,
-        approvedAmount
-      );
-    }
-
-    const updateData: any = {
-      status: 'APPROVED',
-      approvedAmount,
-      approvedAt: new Date(),
-      approvedBy: processedBy,
-      outstandingBalance: approvedAmount,
-      comments: data.comments,
-    };
-
-    if (calculation) {
-      updateData.monthlyDeduction = calculation.monthlyDeduction;
-      updateData.repaymentStartDate = calculation.repaymentStartDate;
-      updateData.totalInterest = calculation.totalInterest;
-    }
-
-    return await prisma.salaryAdvanceRequest.update({
-      where: { id: requestId },
-      data: updateData,
-      include: {
-        employee: {
-          select: {
-            employeeNumber: true,
-            firstName: true,
-            lastName: true,
-            email: true,
+  // Allow transition from PENDINGOPREVIEW to FORWARDEDTOHR, and from FORWARDEDTOHR to APPROVED/REJECTED
+  if (
+    (request.status === 'PENDINGOPREVIEW' && decision === 'FORWARDEDTOHR') ||
+    (request.status === 'FORWARDEDTOHR' && (decision === 'APPROVED' || decision === 'REJECTED'))
+  ) {
+    if (decision === 'FORWARDEDTOHR') {
+      // Ops manager forwards to HR
+      return await prisma.salaryAdvanceRequest.update({
+        where: { id: requestId },
+        data: {
+          status: 'FORWARDEDTOHR',
+          comments: data.comments,
+        },
+        include: {
+          employee: {
+            select: {
+              employeeNumber: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+            },
           },
         },
-      },
-    });
-  } else {
-    return await prisma.salaryAdvanceRequest.update({
-      where: { id: requestId },
-      data: {
-        status: 'REJECTED',
-        rejectedAt: new Date(),
-        rejectedBy: processedBy,
-        rejectionReason: data.rejectionReason,
+      });
+    } else if (decision === 'APPROVED') {
+      const approvedAmount = data.approvedAmount || request.requestedAmount;
+      // Recalculate repayment if approved amount is different
+      let calculation = null;
+      if (approvedAmount !== request.requestedAmount) {
+        calculation = await calculateSalaryAdvanceRepayment(
+          request.employeeId,
+          tenantId,
+          approvedAmount
+        );
+      }
+      const updateData: any = {
+        status: 'APPROVED',
+        approvedAmount,
+        approvedAt: new Date(),
+        approvedBy: processedBy,
+        outstandingBalance: approvedAmount,
         comments: data.comments,
-      },
-      include: {
-        employee: {
-          select: {
-            employeeNumber: true,
-            firstName: true,
-            lastName: true,
-            email: true,
+      };
+      if (calculation) {
+        updateData.monthlyDeduction = calculation.monthlyDeduction;
+        updateData.repaymentStartDate = calculation.repaymentStartDate;
+        updateData.totalInterest = calculation.totalInterest;
+      }
+      return await prisma.salaryAdvanceRequest.update({
+        where: { id: requestId },
+        data: updateData,
+        include: {
+          employee: {
+            select: {
+              employeeNumber: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+            },
           },
         },
-      },
-    });
+      });
+    } else if (decision === 'REJECTED') {
+      return await prisma.salaryAdvanceRequest.update({
+        where: { id: requestId },
+        data: {
+          status: 'REJECTED',
+          rejectedAt: new Date(),
+          rejectedBy: processedBy,
+          rejectionReason: data.rejectionReason,
+          comments: data.comments,
+        },
+        include: {
+          employee: {
+            select: {
+              employeeNumber: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+            },
+          },
+        },
+      });
+    }
+  } else {
+    throw new Error('Invalid status transition or request has already been processed');
   }
 }
 
@@ -530,16 +559,44 @@ export async function getSalaryAdvanceRequests(
   filters: {
     employeeId?: string;
     status?: string;
+    department?: string;
+    branchId?: string;
     startDate?: Date;
     endDate?: Date;
     limit?: number;
     offset?: number;
+    userRole?: string;
+    userId?: string;
   } = {}
 ): Promise<any> {
   const where: any = { tenantId };
 
   if (filters.employeeId) {
-    where.employeeId = filters.employeeId;
+    // Support both UUID and employeeNumber (string or number)
+    where.OR = [
+      { employeeId: filters.employeeId },
+      { employee: { employeeNumber: filters.employeeId } },
+    ];
+  }
+
+  // Filter by branch for operations managers
+  if (filters.userRole === 'OPS_MANAGER' && filters.userId) {
+    // Get user's employee record to find their branch
+    const userEmployee = await prisma.employee.findFirst({
+      where: { 
+        user: { id: filters.userId },
+        tenantId 
+      }
+    });
+    
+    if (userEmployee?.branchId) {
+      where.employee = where.employee || {};
+      where.employee.branchId = userEmployee.branchId;
+    }
+  } else if (filters.branchId) {
+    // Only include requests for employees in the specified branch
+    where.employee = where.employee || {};
+    where.employee.branchId = filters.branchId;
   }
 
   if (filters.status) {
@@ -568,7 +625,7 @@ export async function getSalaryAdvanceRequests(
             email: true,
             position: true,
             department: { select: { name: true } },
-            branch: { select: { name: true } },
+            branch: { select: { name: true, managerId: true } },
           },
         },
         repayments: {
@@ -582,7 +639,27 @@ export async function getSalaryAdvanceRequests(
     prisma.salaryAdvanceRequest.count({ where }),
   ]);
 
-  return { requests, total };
+  // Enrich each request with managerId (employeeId of ops manager) and managerUserId (userId mapped from employeeId)
+  const enrichedRequests = await Promise.all(requests.map(async (req: any) => {
+    // managerId is always the branch.managerId (employeeId of ops manager)
+    const managerId = req.employee?.branch?.managerId || '';
+    let managerUserId = '';
+    if (managerId) {
+      // Look up the userId for the managerId (employeeId)
+      const managerUser = await prisma.user.findFirst({
+        where: { employeeId: managerId },
+        select: { id: true },
+      });
+      managerUserId = managerUser?.id || '';
+    }
+    return {
+      ...req,
+      managerId,
+      managerUserId,
+    };
+  }));
+  console.log('[DEBUG][getSalaryAdvanceRequests] enrichedRequests:', JSON.stringify(enrichedRequests, null, 2));
+  return { requests: enrichedRequests, total };
 }
 
 /**

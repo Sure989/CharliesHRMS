@@ -1,6 +1,7 @@
 import express from 'express';
 import { PrismaClient } from '@prisma/client';
 
+//
 const router = express.Router();
 const prisma = new PrismaClient();
 
@@ -11,7 +12,7 @@ router.get('/api/workflow-templates', async (req, res) => {
     const where = tenantId ? { tenantId } : {};
     const templates = await prisma.workflowTemplate.findMany({ where });
     res.json({ status: 'success', data: templates });
-  } catch (err) {
+  } catch {
     res.status(500).json({ status: 'error', error: 'Failed to fetch workflow templates' });
   }
 });
@@ -23,7 +24,7 @@ router.post('/api/workflow-templates', async (req, res) => {
       data: req.body
     });
     res.status(201).json({ status: 'success', data: template });
-  } catch (err) {
+  } catch {
     res.status(400).json({ status: 'error', error: 'Failed to create workflow template' });
   }
 });

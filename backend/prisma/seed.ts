@@ -41,16 +41,25 @@ const bulkEmployees = [
 ];
 
 async function main() {
+  // === CLEAR EMPLOYEE AND RELATED DATA ===
+  // Order matters due to foreign key constraints
+  await prisma.salaryAdvanceRequest.deleteMany({});
+  await prisma.payroll.deleteMany({});
+  await prisma.leaveRequest.deleteMany({});
+  await prisma.performanceReview.deleteMany({});
+  await prisma.user.updateMany({ data: { employeeId: null } });
+  await prisma.employee.deleteMany({});
+  console.log('Cleared all employee and related records!');
   console.log('Starting database seeding...');
 
   // Create default tenant
   const defaultTenant = await prisma.tenant.upsert({
-    where: { id: '00000000-0000-0000-0000-000000000000' },
+    where: { id: "5bba6f14-accf-4e64-b85c-db4d3fa9c848" },
     update: {},
     create: {
-      id: '00000000-0000-0000-0000-000000000000',
+      id: "5bba6f14-accf-4e64-b85c-db4d3fa9c848",
       name: "Charlie's HRMS",
-      domain: 'charlieshrms.com',
+      domain: 'charlieshrms.com', // update this if you have a specific domain
     },
   });
   console.log('Default tenant created:', defaultTenant.name);
@@ -67,7 +76,7 @@ async function main() {
       lastName: 'User',
       role: 'ADMIN',
       status: 'ACTIVE',
-      tenantId: defaultTenant.id,
+      tenantId: "5bba6f14-accf-4e64-b85c-db4d3fa9c848",
     },
   });
   const hrUser = await prisma.user.upsert({
@@ -80,7 +89,7 @@ async function main() {
       lastName: 'Manager',
       role: 'HR_MANAGER',
       status: 'ACTIVE',
-      tenantId: defaultTenant.id,
+    tenantId: "5bba6f14-accf-4e64-b85c-db4d3fa9c848",
     },
   });
   const opsUser = await prisma.user.upsert({
@@ -93,7 +102,7 @@ async function main() {
       lastName: 'Manager',
       role: 'OPERATIONS_MANAGER',
       status: 'ACTIVE',
-      tenantId: defaultTenant.id,
+    tenantId: "5bba6f14-accf-4e64-b85c-db4d3fa9c848",
     },
   });
   const employeeUser = await prisma.user.upsert({
@@ -106,7 +115,7 @@ async function main() {
       lastName: 'Employee',
       role: 'EMPLOYEE',
       status: 'ACTIVE',
-      tenantId: defaultTenant.id,
+    tenantId: "5bba6f14-accf-4e64-b85c-db4d3fa9c848",
     },
   });
   console.log('Demo users created!');
@@ -123,7 +132,7 @@ async function main() {
         data: {
           name,
           description: `${name} Department`,
-          tenantId: defaultTenant.id,
+    tenantId: "5bba6f14-accf-4e64-b85c-db4d3fa9c848",
           status: 'ACTIVE',
         },
       });
@@ -153,7 +162,7 @@ async function main() {
           address: b.address,
           managerId: userMap[b.managerEmail]?.id,
           departmentId: departments['Operations'].id,
-          tenantId: defaultTenant.id,
+    tenantId: "5bba6f14-accf-4e64-b85c-db4d3fa9c848",
           status: 'ACTIVE',
         },
       });
@@ -250,7 +259,7 @@ async function main() {
         branchId: branchId,
         hireDate: new Date('2022-01-01'),
         status: 'ACTIVE',
-        tenantId: defaultTenant.id,
+    tenantId: "5bba6f14-accf-4e64-b85c-db4d3fa9c848",
       },
     });
 
@@ -267,7 +276,7 @@ async function main() {
         lastName: emp.lastName,
         role: 'EMPLOYEE',
         status: 'ACTIVE',
-        tenantId: defaultTenant.id,
+    tenantId: "5bba6f14-accf-4e64-b85c-db4d3fa9c848",
         employeeId: createdEmployee.id,
       },
     });
@@ -309,7 +318,7 @@ async function main() {
     await prisma.training.create({
       data: {
         ...t,
-        tenantId: defaultTenant.id,
+    tenantId: "5bba6f14-accf-4e64-b85c-db4d3fa9c848",
       },
     });
   }
@@ -327,7 +336,7 @@ async function main() {
       endDate: new Date('2025-07-31'),
       payDate: new Date('2025-07-31'),
       status: 'DRAFT',
-      tenantId: defaultTenant.id,
+    tenantId: "5bba6f14-accf-4e64-b85c-db4d3fa9c848",
     },
   });
   const seededEmployees = await prisma.employee.findMany({ where: { tenantId: defaultTenant.id } });
@@ -343,7 +352,7 @@ async function main() {
         totalDeductions: 0,
         netSalary: emp.salary || 0,
         status: 'DRAFT',
-        tenantId: defaultTenant.id,
+    tenantId: "5bba6f14-accf-4e64-b85c-db4d3fa9c848",
       },
     });
   }
@@ -354,6 +363,8 @@ async function main() {
     { name: 'Annual Leave', code: 'AL', color: '#4caf50' },
     { name: 'Sick Leave', code: 'SL', color: '#f44336' },
     { name: 'Maternity Leave', code: 'ML', color: '#2196f3' },
+    { name: 'Paternity Leave', code: 'PL', color: '#ff9800' },
+    { name: 'Compassionate Leave', code: 'CL', color: '#9c27b0' },
   ];
   const leaveTypeRecords: Record<string, any> = {};
   for (const lt of leaveTypes) {
@@ -364,6 +375,117 @@ async function main() {
     });
     leaveTypeRecords[lt.code] = rec;
   }
+
+  // === SEED LEAVE POLICIES ===
+  const today = new Date();
+  const leavePolicies = [
+    {
+      code: 'AL',
+      name: 'Annual Leave Policy',
+      description: 'Annual leave policy: 21 working days per year, accrues at 1.75 days/month.',
+      maxDaysPerYear: 21,
+      minDaysNotice: 0,
+      maxDaysPerRequest: 21,
+      maxCarryForward: 7,
+      allowNegativeBalance: false,
+      requiresApproval: true,
+      autoApprove: false,
+      accrualRate: 1.75,
+      probationPeriodDays: 0,
+    },
+    {
+      code: 'SL',
+      name: 'Sick Leave Policy',
+      description: 'Sick leave: 7 days full pay, 7 days half pay per year.',
+      maxDaysPerYear: 14,
+      minDaysNotice: 0,
+      maxDaysPerRequest: 7,
+      maxCarryForward: 0,
+      allowNegativeBalance: false,
+      requiresApproval: true,
+      autoApprove: false,
+      accrualRate: 0,
+      probationPeriodDays: 0,
+    },
+    {
+      code: 'ML',
+      name: 'Maternity Leave Policy',
+      description: 'Maternity leave: 12 weeks (84 days) paid leave.',
+      maxDaysPerYear: 84,
+      minDaysNotice: 0,
+      maxDaysPerRequest: 84,
+      maxCarryForward: 0,
+      allowNegativeBalance: false,
+      requiresApproval: true,
+      autoApprove: false,
+      accrualRate: 0,
+      probationPeriodDays: 0,
+    },
+    {
+      code: 'PL',
+      name: 'Paternity Leave Policy',
+      description: 'Paternity leave: 2 weeks (14 days) paid leave.',
+      maxDaysPerYear: 14,
+      minDaysNotice: 0,
+      maxDaysPerRequest: 14,
+      maxCarryForward: 0,
+      allowNegativeBalance: false,
+      requiresApproval: true,
+      autoApprove: false,
+      accrualRate: 0,
+      probationPeriodDays: 0,
+    },
+    {
+      code: 'CL',
+      name: 'Compassionate Leave Policy',
+      description: 'Compassionate leave: max 15 days per year.',
+      maxDaysPerYear: 15,
+      minDaysNotice: 0,
+      maxDaysPerRequest: 15,
+      maxCarryForward: 0,
+      allowNegativeBalance: false,
+      requiresApproval: true,
+      autoApprove: false,
+      accrualRate: 0,
+      probationPeriodDays: 0,
+    },
+  ];
+  for (const policy of leavePolicies) {
+    const leaveType = leaveTypeRecords[policy.code];
+    if (!leaveType) continue;
+    // Remove 'code' from policy before DB insert/update
+    const { code, ...policyData } = policy;
+    const existing = await prisma.leavePolicy.findFirst({
+      where: {
+        leaveTypeId: leaveType.id,
+        tenantId: "5bba6f14-accf-4e64-b85c-db4d3fa9c848",
+        name: policy.name,
+      },
+    });
+    if (existing) {
+      await prisma.leavePolicy.update({
+        where: { id: existing.id },
+        data: {
+          ...policyData,
+          leaveTypeId: leaveType.id,
+          tenantId: "5bba6f14-accf-4e64-b85c-db4d3fa9c848",
+          isActive: true,
+          effectiveDate: today,
+        },
+      });
+    } else {
+      await prisma.leavePolicy.create({
+        data: {
+          ...policyData,
+          leaveTypeId: leaveType.id,
+          tenantId: "5bba6f14-accf-4e64-b85c-db4d3fa9c848",
+          isActive: true,
+          effectiveDate: today,
+        },
+      });
+    }
+  }
+  console.log('Leave policies seeded!');
   // Seed a few leave requests for the first 5 employees
   for (let i = 0; i < Math.min(5, seededEmployees.length); i++) {
     await prisma.leaveRequest.create({
@@ -375,7 +497,7 @@ async function main() {
         totalDays: 5,
         status: i % 2 === 0 ? 'APPROVED' : 'PENDING',
         appliedAt: new Date('2025-07-01'),
-        tenantId: defaultTenant.id,
+    tenantId: "5bba6f14-accf-4e64-b85c-db4d3fa9c848",
       },
     });
   }
@@ -392,7 +514,7 @@ async function main() {
       endDate: new Date('2025-07-31'),
       reviewDeadline: new Date('2025-07-31'),
       status: 'ACTIVE',
-      tenantId: defaultTenant.id,
+    tenantId: "5bba6f14-accf-4e64-b85c-db4d3fa9c848",
     },
   });
   for (let i = 0; i < Math.min(5, seededEmployees.length); i++) {
@@ -405,7 +527,7 @@ async function main() {
         overallRating: 4.0,
         overallComments: 'Good performance',
         createdAt: new Date('2025-07-01'),
-        tenantId: defaultTenant.id,
+    tenantId: "5bba6f14-accf-4e64-b85c-db4d3fa9c848",
       },
     });
   }
@@ -584,6 +706,34 @@ async function main() {
       console.log(`Linked user ${user.email} to employee ${emp.id}`);
     }
   }
+
+  // === SEED SALARY ADVANCE POLICY ===
+  const existingPolicy = await prisma.salaryAdvancePolicy.findFirst({
+    where: { tenantId: defaultTenant.id, isActive: true }
+  });
+  if (!existingPolicy) {
+    await prisma.salaryAdvancePolicy.create({
+      data: {
+        name: 'Monthly Salary Advance Policy',
+        description: 'Employees can request up to 25% of their basic salary per month with unlimited requests until limit is reached. All advances are deducted from salary at month end.',
+        maxAdvancePercentage: 25,
+        maxAdvanceAmount: null, // No fixed cap - only percentage based
+        minServiceMonths: 0, // No minimum service requirement
+        maxAdvancesPerYear: 999, // Unlimited requests per year
+        interestRate: 0, // No interest
+        requiresApproval: true, // HR approval required
+        autoApprove: false, // Manual approval needed
+        isActive: true,
+        effectiveDate: new Date(),
+        tenantId: defaultTenant.id,
+        monthlyDeductionPercentage: 100, // Full deduction at month end
+      }
+    });
+    console.log('Seeded salary advance policy: Monthly advances up to 25% of basic salary!');
+  } else {
+    console.log('Salary advance policy already exists!');
+  }
+
   console.log('Database seeding completed successfully!');
 }
 

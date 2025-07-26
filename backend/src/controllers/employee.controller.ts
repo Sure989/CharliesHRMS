@@ -233,39 +233,33 @@ export const createEmployee = async (req: Request, res: Response) => {
     const nextEmployeeNumber = `EMP${String(nextNumber).padStart(3, '0')}`;
 
     const employee = await prisma.employee.create({
-      data: {
-        employeeNumber: nextEmployeeNumber,
-        firstName,
-        lastName,
-        email,
-        phone,
-        address,
-        position,
-        departmentId,
-        branchId,
-        salary,
-        hireDate,
-        status: (typeof req.body.status === 'string' ? req.body.status.toUpperCase() : 'ACTIVE'),
-        tenantId: req.tenantId,
-      },
-    });
-
-    // Automatically create a User for this employee if not exists
-    const existingUser = await prisma.user.findFirst({ where: { email } });
-    if (!existingUser) {
-      await prisma.user.create({
-        data: {
-          email,
-          firstName,
-          lastName,
-          passwordHash: '', // Set a default or random password, or require reset
-          role: 'EMPLOYEE',
-          status: 'ACTIVE',
-          tenantId: req.tenantId,
-          employeeId: employee.id,
-        },
-      });
-    }
+          data: {
+            employeeNumber: nextEmployeeNumber,
+            firstName,
+            lastName,
+            email,
+            phone,
+            address,
+            position,
+            departmentId,
+            branchId,
+            salary,
+            hireDate: new Date(hireDate),
+            status: 'ACTIVE',
+            tenantId: req.tenantId,
+            user: {
+              create: {
+                email,
+                firstName,
+                lastName,
+                role: 'EMPLOYEE',
+                tenantId: req.tenantId,
+                passwordHash: ""
+              }
+            }
+          },
+          include: { user: true }
+        });
 
     return res.status(201).json({
       status: 'success',
@@ -605,17 +599,8 @@ export const importEmployees = async (req: Request, res: Response) => {
           }
         }
       } else if (fileExtension === 'xlsx' || fileExtension === 'xls') {
-        // Parse Excel file
-        const XLSX = require('xlsx');
-        const workbook = XLSX.read(file.buffer, { type: 'buffer' });
-        const sheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[sheetName];
-        const jsonData = XLSX.utils.sheet_to_json(worksheet);
-        
-        employeeData = jsonData.map((row: any, index: number) => ({
-          ...row,
-          rowNumber: index + 2 // +2 because Excel rows start from 1 and we skip header
-        }));
+           // XLSX import and processing removed due to package removal for security reasons
+           // If you need to support Excel files, consider using a different, secure library or only allow CSV uploads.
       } else {
         return res.status(400).json({
           status: 'error',
@@ -823,7 +808,7 @@ export const exportEmployees = async (req: Request, res: Response) => {
 
     const csvRows = [
       headers.join(','),
-      ...employees.map(emp => [
+      ...employees.map((emp: any) => [
         emp.employeeNumber,
         emp.firstName,
         emp.lastName,

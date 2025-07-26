@@ -347,6 +347,7 @@ export const deleteBranch = async (req: Request, res: Response) => {
 export const getBranchEmployees = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    console.log('[getBranchEmployees] branchId:', id, 'tenantId:', req.tenantId);
     if (!req.tenantId) {
       return res.status(401).json({
         status: 'error',
@@ -360,6 +361,7 @@ export const getBranchEmployees = async (req: Request, res: Response) => {
         tenantId: req.tenantId,
       },
     });
+    console.log('[getBranchEmployees] found employees:', employees);
     return res.status(200).json({
       status: 'success',
       data: { employees },

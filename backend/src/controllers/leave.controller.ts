@@ -5,6 +5,7 @@ import {
   validateLeaveRequest,
   updateLeaveBalance,
   processLeaveRequestDecision,
+  // eslint-disable-next-line no-unused-vars
   initializeEmployeeLeaveBalances,
 } from '../services/leaveManagement.service';
 
@@ -166,18 +167,26 @@ export const submitLeaveRequest = async (req: Request, res: Response) => {
       const hrUser = await prisma.user.findFirst({
         where: { tenantId: req.tenantId, role: 'HR' },
       });
+      console.log(`[LeaveRequest] Employee is OPS_MANAGER or position 'Operations Manager'. Routing to HR.`);
       if (hrUser) {
         approverId = hrUser.id;
         approverRole = 'HR';
+        console.log(`[LeaveRequest] Approver assigned: HR (userId=${approverId}) for employeeId=${employeeId}`);
       }
     } else if (employee?.branchId) {
-      // Get branch and managerId
+      // Get branch and managerUserId
       const branch = await prisma.branch.findFirst({
         where: { id: employee.branchId, tenantId: req.tenantId },
       });
-      if (branch?.managerId) {
-        approverId = branch.managerId;
+      console.log(`[LeaveRequest] Employee branchId: ${employee.branchId}, branch: ${branch?.name}, managerUserId: ${branch?.managerUserId}`);
+      if (branch?.managerUserId) {
+        const managerUser = await prisma.user.findUnique({ where: { id: branch.managerUserId } });
+        console.log(`[LeaveRequest] Branch managerUserId: ${branch.managerUserId}, managerUser: ${managerUser?.firstName} ${managerUser?.lastName} (role: ${managerUser?.role})`);
+        approverId = branch.managerUserId;
         approverRole = 'BRANCH_MANAGER';
+        console.log(`[LeaveRequest] Approver assigned: Branch Manager (userId=${approverId}) for branchId=${employee.branchId}, employeeId=${employeeId}`);
+      } else {
+        console.log(`[LeaveRequest] Branch has no managerUserId assigned.`);
       }
       if (!approverId) {
         // Fallback to HR
@@ -187,6 +196,7 @@ export const submitLeaveRequest = async (req: Request, res: Response) => {
         if (hrUser) {
           approverId = hrUser.id;
           approverRole = 'HR';
+          console.log(`[LeaveRequest] Approver fallback: HR (userId=${approverId}) for employeeId=${employeeId}`);
         }
       }
     } else {
@@ -197,6 +207,7 @@ export const submitLeaveRequest = async (req: Request, res: Response) => {
       if (hrUser) {
         approverId = hrUser.id;
         approverRole = 'HR';
+        console.log(`[LeaveRequest] Approver fallback: HR (userId=${approverId}) for employeeId=${employeeId}`);
       }
     }
 
@@ -209,6 +220,7 @@ export const submitLeaveRequest = async (req: Request, res: Response) => {
         totalDays,
         reason,
         tenantId: req.tenantId,
+        branchId: employee?.branchId || null,
         comments: approverRole ? `Routed to ${approverRole}` : undefined,
       },
       include: {
@@ -256,7 +268,7 @@ export const submitLeaveRequest = async (req: Request, res: Response) => {
  */
 export const getLeaveRequests = async (req: Request, res: Response) => {
   try {
-    const { employeeId, status, leaveTypeId, startDate, endDate } = req.query;
+    const { employeeId, status, leaveTypeId, startDate, endDate, branchName, branchId } = req.query;
 
     if (!req.tenantId) {
       return res.status(401).json({
@@ -265,7 +277,7 @@ export const getLeaveRequests = async (req: Request, res: Response) => {
       });
     }
 
-    const where: any = { tenantId: req.tenantId };
+    const where = { tenantId: req.tenantId } as any;
 
     if (employeeId) where.employeeId = employeeId;
     if (status) where.status = status;
@@ -275,40 +287,95 @@ export const getLeaveRequests = async (req: Request, res: Response) => {
       where.endDate = { lte: new Date(endDate as string) };
     }
 
-    const leaveRequests = await prisma.leaveRequest.findMany({
-      where,
-      include: {
-        employee: {
-          select: {
-            id: true,
-            employeeNumber: true,
-            firstName: true,
-            lastName: true,
-            department: { select: { name: true } },
-            branch: { select: { name: true } },
+
+    // Filter by branch for operations managers
+    if (req.user?.role === 'OPS_MANAGER') {
+      // Get user's employee record to find their branch
+      const userEmployee = await prisma.employee.findFirst({
+        where: { 
+          user: { id: req.user.userId },
+          tenantId: req.tenantId 
+        }
+      });
+      
+      if (userEmployee?.branchId) {
+        where.branchId = userEmployee.branchId;
+      }
+    }
+    
+    // Additional filtering by branch name or branchId from query params
+    if (branchName || branchId) {
+      where.employee = {};
+      if (branchName) {
+        where.employee.branch = {
+          is: { name: { equals: branchName, mode: 'insensitive' } }
+        };
+      }
+      if (branchId) {
+        where.branchId = branchId;
+      }
+    }
+
+    let leaveRequests;
+    try {
+      leaveRequests = await prisma.leaveRequest.findMany({
+        where,
+        include: {
+          employee: {
+            select: {
+              id: true,
+              employeeNumber: true,
+              firstName: true,
+              lastName: true,
+              position: true,
+              branch: {
+                select: {
+                  name: true,
+                  managerUserId: true,
+                  managerId: true,
+                },
+              },
+            },
+          },
+          leaveType: {
+            select: {
+              id: true,
+              name: true,
+              code: true,
+              color: true,
+            },
           },
         },
-        leaveType: {
-          select: {
-            id: true,
-            name: true,
-            code: true,
-            color: true,
-          },
-        },
-      },
-      orderBy: { appliedAt: 'desc' },
-    });
+        orderBy: { appliedAt: 'desc' },
+      });
+    } catch (prismaError) {
+      console.error('Prisma query error in getLeaveRequests:', prismaError);
+      console.error('Query filter used:', JSON.stringify(where, null, 2));
+      return res.status(500).json({
+        status: 'error',
+        message: 'Prisma query error while fetching leave requests',
+        details: prismaError instanceof Error ? prismaError.message : prismaError,
+        filter: where,
+      });
+    }
+
+    // Add managerUserId and opsManagerId to each leaveRequest for frontend filtering
+    const enrichedLeaveRequests = leaveRequests.map((req: any) => ({
+      ...req,
+      managerUserId: req.employee?.branch?.managerUserId || '',
+      managerId: req.employee?.branch?.managerId || (req.employee?.position === 'Operations Manager' ? req.employee.id : ''),
+    }));
 
     return res.status(200).json({
       status: 'success',
-      data: { leaveRequests },
+      data: { leaveRequests: enrichedLeaveRequests },
     });
   } catch (error) {
-    console.error('Get leave requests error:', error);
+    console.error('General error in getLeaveRequests:', error);
     return res.status(500).json({
       status: 'error',
       message: 'Internal server error while fetching leave requests',
+      details: error instanceof Error ? error.message : error,
     });
   }
 };
@@ -519,3 +586,4 @@ export const createHoliday = async (req: Request, res: Response) => {
     });
   }
 };
+

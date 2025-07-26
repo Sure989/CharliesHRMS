@@ -1,6 +1,218 @@
+/**
+ * Update a payroll period
+ * @route PUT /api/payroll/periods/:id
+ */
+export const updatePayrollPeriod = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { name, startDate, endDate, payDate, description } = req.body;
+    if (!req.tenantId) {
+      return res.status(401).json({ status: 'error', message: 'Tenant ID is required' });
+    }
+    if (!id || !name || !startDate || !endDate || !payDate) {
+      return res.status(400).json({ status: 'error', message: 'All fields are required' });
+    }
+    // Check if period exists
+    const period = await prisma.payrollPeriod.findFirst({
+      where: { id, tenantId: req.tenantId },
+    });
+    if (!period) {
+      return res.status(404).json({ status: 'error', message: 'Payroll period not found' });
+    }
+    // Update period
+    const updated = await prisma.payrollPeriod.update({
+      where: { id },
+      data: {
+        name,
+        startDate: new Date(startDate),
+        endDate: new Date(endDate),
+        payDate: new Date(payDate),
+        description,
+      },
+    });
+    return res.status(200).json({ status: 'success', message: 'Payroll period updated', data: updated });
+  } catch (error) {
+    console.error('Update payroll period error:', error);
+    return res.status(500).json({ status: 'error', message: 'Internal server error while updating payroll period' });
+  }
+};
+/**
+ * Process payroll for all employees in a specific period (single period processing)
+ * @route POST /api/payroll/periods/:periodId/process
+ */
+export const processPayrollForPeriod = async (req: Request, res: Response) => {
+  try {
+    const { periodId } = req.params;
+    if (!req.tenantId) {
+      return res.status(401).json({
+        status: 'error',
+        message: 'Tenant ID is required',
+      });
+    }
+    // Check if payroll period exists
+    const period = await prisma.payrollPeriod.findFirst({
+      where: { id: periodId, tenantId: req.tenantId },
+    });
+    if (!period) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'Payroll period not found',
+      });
+    }
+    // Get all active employees
+    const employees = await prisma.employee.findMany({
+      where: { tenantId: req.tenantId, status: 'ACTIVE' },
+    });
+    const results = {
+      processed: 0,
+      skipped: 0,
+      errors: 0,
+      details: [] as any[],
+    };
+    for (const employee of employees) {
+      try {
+        // Check if payroll already exists
+        const existingPayroll = await prisma.payroll.findFirst({
+          where: {
+            employeeId: employee.id,
+            payrollPeriodId: periodId,
+            tenantId: req.tenantId,
+          },
+        });
+        if (existingPayroll) {
+          results.skipped++;
+          results.details.push({
+            employeeId: employee.id,
+            employeeNumber: employee.employeeNumber,
+            name: `${employee.firstName} ${employee.lastName}`,
+            status: 'skipped',
+            reason: 'Payroll already exists',
+          });
+          continue;
+        }
+        // Use employee's base salary or default
+        const basicSalary = employee.salary || 0;
+        if (basicSalary <= 0) {
+          results.errors++;
+          results.details.push({
+            employeeId: employee.id,
+            employeeNumber: employee.employeeNumber,
+            name: `${employee.firstName} ${employee.lastName}`,
+            status: 'error',
+            reason: 'No salary configured',
+          });
+          continue;
+        }
+        // Calculate payroll
+        const calculation = await calculatePayroll({
+          employeeId: employee.id,
+          payrollPeriodId: periodId,
+          basicSalary,
+          allowances: [],
+          tenantId: req.tenantId,
+        });
+        // Create payroll record
+        const payroll = await prisma.payroll.create({
+          data: {
+            employeeId: employee.id,
+            payrollPeriodId: periodId,
+            basicSalary: calculation.basicSalary,
+            grossSalary: calculation.grossSalary,
+            totalDeductions: calculation.totalDeductions,
+            netSalary: calculation.netSalary,
+            tenantId: req.tenantId,
+          },
+        });
+        // Create payroll items
+        await Promise.all(
+          calculation.payrollItems.map(item =>
+            prisma.payrollItem.create({
+              data: {
+                payrollId: payroll.id,
+                type: item.type,
+                category: item.category,
+                name: item.name,
+                amount: item.amount,
+                isStatutory: item.isStatutory,
+                tenantId: req.tenantId!,
+              },
+            })
+          )
+        );
+        // Generate pay stub
+        const stubNumber = await generatePayStubNumber(req.tenantId);
+        await prisma.payStub.create({
+          data: {
+            employeeId: employee.id,
+            payrollId: payroll.id,
+            payrollPeriodId: periodId,
+            stubNumber,
+            tenantId: req.tenantId,
+          },
+        });
+        results.processed++;
+        results.details.push({
+          employeeId: employee.id,
+          employeeNumber: employee.employeeNumber,
+          name: `${employee.firstName} ${employee.lastName}`,
+          status: 'processed',
+          netSalary: calculation.netSalary,
+        });
+      } catch (error) {
+        console.error(`Error processing payroll for employee ${employee.id}:`, error);
+        results.errors++;
+        results.details.push({
+          employeeId: employee.id,
+          employeeNumber: employee.employeeNumber,
+          name: `${employee.firstName} ${employee.lastName}`,
+          status: 'error',
+          reason: 'Processing failed',
+        });
+      }
+    }
+    return res.status(200).json({
+      status: 'success',
+      message: 'Payroll processing completed for period',
+      data: { results },
+    });
+  } catch (error) {
+    console.error('Process payroll for period error:', error);
+    return res.status(500).json({
+      status: 'error',
+      message: 'Internal server error while processing payroll for period',
+    });
+  }
+};
+/**
+ * Delete payroll for a specific employee and period (for reprocessing)
+ * @route DELETE /api/payroll/:employeeId/:periodId
+ */
 import { Request, Response } from 'express';
 import { prisma } from '../index';
 import { calculatePayroll, generatePayStubNumber } from '../services/payrollCalculation.service';
+
+export const deletePayrollForEmployeePeriod = async (req: Request, res: Response) => {
+  const { employeeId, periodId } = req.params;
+  if (!employeeId || !periodId) {
+    return res.status(400).json({ status: 'error', message: 'employeeId and periodId are required' });
+  }
+  try {
+    const deleted = await prisma.payroll.deleteMany({
+      where: {
+        employeeId,
+        payrollPeriodId: periodId,
+        tenantId: req.tenantId,
+      },
+    });
+    if (deleted.count === 0) {
+      return res.status(404).json({ status: 'error', message: 'No payroll record found to delete' });
+    }
+    return res.json({ status: 'success', message: 'Payroll record deleted', count: deleted.count });
+  } catch (error) {
+    console.error('Delete payroll error:', error);
+    return res.status(500).json({ status: 'error', message: 'Internal server error while deleting payroll' });
+  }
+};
 
 /**
  * Get all payroll periods for a tenant
@@ -30,7 +242,7 @@ export const getPayrollPeriods = async (req: Request, res: Response) => {
 
     return res.status(200).json({
       status: 'success',
-      data: { periods },
+      data: periods,
     });
   } catch (error) {
     console.error('Get payroll periods error:', error);
@@ -151,9 +363,30 @@ export const getPayrollsByPeriod = async (req: Request, res: Response) => {
       },
     });
 
+    // Map statutory deductions from payrollItems
+    const mappedPayrolls = payrolls.map(payroll => {
+      // Aggregate statutory deductions
+      const statutoryDeductions = { paye: 0, nhif: 0, nssf: 0, total: 0 };
+      if (Array.isArray(payroll.payrollItems)) {
+        payroll.payrollItems.forEach(item => {
+          if (item.isStatutory) {
+            const name = (item.name || '').toLowerCase();
+            if (name.includes('paye')) statutoryDeductions.paye += Number(item.amount) || 0;
+            else if (name.includes('nhif')) statutoryDeductions.nhif += Number(item.amount) || 0;
+            else if (name.includes('nssf')) statutoryDeductions.nssf += Number(item.amount) || 0;
+            statutoryDeductions.total += Number(item.amount) || 0;
+          }
+        });
+      }
+      return {
+        ...payroll,
+        statutoryDeductions,
+      };
+    });
+
     return res.status(200).json({
       status: 'success',
-      data: { payrolls },
+      data: { payrolls: mappedPayrolls },
     });
   } catch (error) {
     console.error('Get payrolls by period error:', error);
@@ -262,7 +495,7 @@ export const processPayroll = async (req: Request, res: Response) => {
     });
 
     // Create payroll items
-    const payrollItems = await Promise.all(
+    await Promise.all(
       calculation.payrollItems.map(item =>
         prisma.payrollItem.create({
           data: {
@@ -279,13 +512,14 @@ export const processPayroll = async (req: Request, res: Response) => {
     );
 
     // Generate pay stub
-    const stubNumber = await generatePayStubNumber(req.tenantId);
-    const payStub = await prisma.payStub.create({
+    const _stubNumber = await generatePayStubNumber(req.tenantId);
+    // eslint-disable-next-line no-unused-vars
+    const _payStub = await prisma.payStub.create({
       data: {
         employeeId,
         payrollId: payroll.id,
         payrollPeriodId,
-        stubNumber,
+        stubNumber: _stubNumber,
         tenantId: req.tenantId,
       },
     });
@@ -634,7 +868,7 @@ export const getPayStubs = async (req: Request, res: Response) => {
  */
 export const getTimeEntries = async (req: Request, res: Response) => {
   try {
-    const { employeeId, periodId, startDate, endDate } = req.query;
+    // Removed unused variables: employeeId, periodId, startDate, endDate
 
     if (!req.tenantId) {
       return res.status(401).json({
@@ -1259,7 +1493,7 @@ export const updatePayrollSettings = async (req: Request, res: Response) => {
  */
 export const getComplianceReports = async (req: Request, res: Response) => {
   try {
-    const { type, year, month } = req.query;
+    // Removed unused variables: type, year, month
 
     if (!req.tenantId) {
       return res.status(401).json({
@@ -1792,7 +2026,7 @@ export const approvePayrollRecords = async (req: Request, res: Response) => {
         tenantId: req.tenantId,
       },
       data: {
-        // status: 'APPROVED', // Uncomment if you add status field to schema
+        status: 'APPROVED',
         updatedAt: new Date(),
       },
     });

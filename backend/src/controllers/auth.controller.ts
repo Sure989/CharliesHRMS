@@ -90,6 +90,22 @@ export const login = async (req: Request, res: Response) => {
     // Get user permissions based on their role
     const permissions = getUserPermissions(user.role);
 
+    // Fetch branchId and branch details if employeeId is present
+    let branchId = null;
+    let branch = null;
+    if (user.employeeId) {
+      const employee = await prisma.employee.findUnique({
+        where: { id: user.employeeId },
+        select: {
+          branchId: true,
+          branch: { select: { id: true, name: true, location: true, address: true } }
+        }
+      });
+      if (employee) {
+        branchId = employee.branchId;
+        branch = employee.branch;
+      }
+    }
     return res.status(200).json({
       status: 'success',
       message: 'Login successful',
@@ -102,6 +118,8 @@ export const login = async (req: Request, res: Response) => {
           role: user.role,
           tenantId: tenantIdForToken,
           employeeId: user.employeeId,
+          branchId,
+          branch,
           permissions: permissions, // Include permissions in the user object
         },
         accessToken,
@@ -260,9 +278,26 @@ export const getCurrentUser = async (req: Request, res: Response) => {
       },
     });
 
+    let branchId = null;
+    let branch = null;
+    if (user && user.employeeId) {
+      const employee = await prisma.employee.findUnique({
+        where: { id: user.employeeId },
+        select: {
+          branchId: true,
+          branch: { select: { id: true, name: true, location: true, address: true } }
+        }
+      });
+      if (employee) {
+        branchId = employee.branchId;
+        branch = employee.branch;
+      }
+    }
+
     if (user) {
-      // Add permissions to the user object before sending to frontend
       (user as any).permissions = getUserPermissions(user.role);
+      (user as any).branchId = branchId;
+      (user as any).branch = branch;
     }
 
     if (!user) {

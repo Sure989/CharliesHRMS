@@ -24,7 +24,7 @@ services:
       - "5050:80"
     environment:
       PGADMIN_DEFAULT_EMAIL: admin@admin.com
-      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_DEFAULT_PASSWORD: ContraMundum@7721
     volumes:
       - pgadmin_data:/var/lib/pgadmin
     networks:

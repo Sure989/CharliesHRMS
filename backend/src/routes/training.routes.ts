@@ -212,7 +212,7 @@ router.post('/',
         return res.status(400).json({
           status: 'error',
           message: 'Validation failed',
-          errors: error.errors
+          errors: error.issues
         });
       }
       console.error('Error creating training:', error);
@@ -268,7 +268,7 @@ router.put('/:id',
         return res.status(400).json({
           status: 'error',
           message: 'Validation failed',
-          errors: error.errors
+          errors: error.issues
         });
       }
       console.error('Error updating training:', error);
@@ -384,7 +384,7 @@ router.post('/:id/enroll',
         return res.status(400).json({
           status: 'error',
           message: 'Validation failed',
-          errors: error.errors
+          errors: error.issues
         });
       }
       console.error('Error enrolling employees:', error);
@@ -445,7 +445,7 @@ router.put('/:id/enrollments/:enrollmentId',
         return res.status(400).json({
           status: 'error',
           message: 'Validation failed',
-          errors: error.errors
+          errors: error.issues
         });
       }
       console.error('Error updating enrollment:', error);

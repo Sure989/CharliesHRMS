@@ -46,7 +46,7 @@ export async function getSystemStatus(tenantId: string): Promise<SystemStatus> {
     } else if (recentDbErrors > 50) {
       database = 'critical';
     }
-  } catch (error) {
+  } catch {
     database = 'critical';
     overall = 'critical';
   }
@@ -66,7 +66,7 @@ export async function getSystemStatus(tenantId: string): Promise<SystemStatus> {
     } else if (failedLogins > 100) {
       authentication = 'critical';
     }
-  } catch (error) {
+  } catch {
     authentication = 'warning';
     if (overall !== 'critical') overall = 'warning';
   }
@@ -86,7 +86,7 @@ export async function getSystemStatus(tenantId: string): Promise<SystemStatus> {
     } else if (apiErrors > 50) {
       api = 'critical';
     }
-  } catch (error) {
+  } catch {
     api = 'warning';
     if (overall !== 'critical') overall = 'warning';
   }

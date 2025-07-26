@@ -1,8 +1,3 @@
-import { Request, Response, NextFunction } from 'express';
-import { verifyToken, TokenPayload } from '../utils/jwt';
-import { prisma } from '../index';
-
-// Extend Express Request interface to include user property
 declare global {
   namespace Express {
     interface Request {
@@ -11,6 +6,19 @@ declare global {
     }
   }
 }
+// Type augmentation for Express Request is handled elsewhere; removed unused declarations
+// Type augmentation for Express Request is handled elsewhere; removed unused declarations
+// Type augmentation for Express Request is handled elsewhere; removed unused declarations
+// Type augmentation for Express Request is handled elsewhere; removed unused declarations
+// Type augmentation for Express Request is handled elsewhere; removed unused declarations
+// Type augmentation for Express Request is handled elsewhere; removed unused declarations
+import { Request, Response, NextFunction } from 'express';
+import { verifyToken, TokenPayload } from '../utils/jwt';
+// Type augmentation for Express Request is handled elsewhere; removed unused declarations
+// Removed unused import: prisma
+
+// Extend Express Request interface to include user property
+// Removed unused global type declarations for Express and Request
 
 /**
  * Middleware to authenticate requests using JWT

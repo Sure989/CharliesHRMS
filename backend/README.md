@@ -25,30 +25,36 @@ This is the backend API for the Human Resource Management System (HRMS) built wi
 1. **Clone the repository**
 
 2. **Install dependencies**
+
    ```bash
    cd backend
    npm install
    ```
 
 3. **Configure environment variables**
+
    - Copy `.env.example` to `.env` (if not already done)
    - Update the database connection string and other settings
 
 4. **Start PostgreSQL with Docker** (optional)
+
    ```bash
    docker-compose up -d
    ```
 
 5. **Setup the database**
+
    ```bash
    npm run db:setup
    ```
+
    This will:
    - Generate Prisma client
    - Run migrations
    - Seed the database with initial data
 
 6. **Start the development server**
+
    ```bash
    npm run dev
    ```
@@ -56,12 +62,14 @@ This is the backend API for the Human Resource Management System (HRMS) built wi
 ## API Endpoints
 
 ### Authentication
+
 - `POST /api/auth/login` - Login and get tokens
 - `POST /api/auth/logout` - Logout and invalidate refresh token
 - `POST /api/auth/refresh-token` - Refresh access token
 - `GET /api/auth/me` - Get current user information
 
 ### Users
+
 - `GET /api/users` - Get all users (admin only)
 - `GET /api/users/:id` - Get user by ID
 - `POST /api/users` - Create a new user
@@ -69,6 +77,7 @@ This is the backend API for the Human Resource Management System (HRMS) built wi
 - `DELETE /api/users/:id` - Delete a user
 
 ### Departments
+
 - `GET /api/departments` - Get all departments
 - `GET /api/departments/:id` - Get department by ID
 - `POST /api/departments` - Create a new department
@@ -76,6 +85,7 @@ This is the backend API for the Human Resource Management System (HRMS) built wi
 - `DELETE /api/departments/:id` - Delete a department
 
 ### Branches
+
 - `GET /api/branches` - Get all branches
 - `GET /api/branches/:id` - Get branch by ID
 - `POST /api/branches` - Create a new branch
@@ -97,19 +107,21 @@ This is the backend API for the Human Resource Management System (HRMS) built wi
 
 ### Database Management
 
-- **Prisma Studio**: A visual database browser
-  ```bash
-  npm run prisma:studio
-  ```
+**Prisma Studio**: A visual database browser
 
-- **Creating Migrations**
-  ```bash
-  npx prisma migrate dev --name migration_name
-  ```
+```bash
+npm run prisma:studio
+```
+
+### Creating Migrations
+
+```bash
+npx prisma migrate dev --name migration_name
+```
 
 ## Project Structure
 
-```
+```text
 backend/
 ├── prisma/                 # Prisma schema and migrations
 │   ├── schema.prisma       # Database schema
@@ -134,8 +146,8 @@ backend/
 
 After seeding the database, you can log in with the following credentials:
 
-- **Email**: admin@charlieshrms.com
-- **Password**: admin123
+- **Email**: <admin@charlieshrms.com>
+- **Password**: password123
 
 ## License
 

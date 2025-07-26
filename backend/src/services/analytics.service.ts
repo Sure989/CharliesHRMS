@@ -72,47 +72,66 @@ export interface DashboardMetrics {
 /**
  * Get dashboard metrics for overview
  */
-export async function getDashboardMetrics(tenantId: string): Promise<any> {
+export async function getDashboardMetrics(tenantId: string = 'default'): Promise<any> {
+  // ...existing code...
+  
+  // If tenantId is 'default', get the first available tenant
+  if (tenantId === 'default') {
+    const firstTenant = await prisma.tenant.findFirst({ select: { id: true } });
+    if (firstTenant) {
+      tenantId = firstTenant.id;
+      // ...existing code...
+    }
+  }
   const currentDate = new Date();
   const currentMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
   const previousMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1);
   const currentYear = currentDate.getFullYear();
 
   // --- Real data (existing) ---
-  const totalEmployees = await prisma.employee.count({ where: { tenantId } });
-  const activeEmployees = await prisma.employee.count({ where: { tenantId, status: 'ACTIVE' } });
-  const totalDepartments = await prisma.department.count({ where: { tenantId, status: 'ACTIVE' } });
-  const totalBranches = await prisma.branch.count({ where: { tenantId, status: 'ACTIVE' } });
-  const pendingLeaveRequests = await prisma.leaveRequest.count({ where: { tenantId, status: 'PENDING' } });
-  const upcomingReviews = await prisma.performanceReview.count({ where: { tenantId, status: { in: ['DRAFT', 'IN_PROGRESS'] } } });
-  const currentMonthPayroll = await prisma.payroll.aggregate({ where: { tenantId, createdAt: { gte: currentMonth } }, _sum: { grossSalary: true } });
-  const previousMonthPayroll = await prisma.payroll.aggregate({ where: { tenantId, createdAt: { gte: previousMonth, lt: currentMonth } }, _sum: { grossSalary: true } });
+  // ...existing code...
+  const totalEmployees = await prisma.employee.count({ where: tenantId ? { tenantId } : {} });
+  // ...existing code...
+  const activeEmployees = await prisma.employee.count({ where: tenantId ? { tenantId, status: 'ACTIVE' } : { status: 'ACTIVE' } });
+  // ...existing code...
+  const totalDepartments = await prisma.department.count({ where: tenantId ? { tenantId, status: 'ACTIVE' } : { status: 'ACTIVE' } });
+  // ...existing code...
+  const totalBranches = await prisma.branch.count({ where: tenantId ? { tenantId, status: 'ACTIVE' } : { status: 'ACTIVE' } });
+  // ...existing code...
+  const pendingLeaveRequests = await prisma.leaveRequest.count({ where: tenantId ? { tenantId, status: 'PENDING' } : { status: 'PENDING' } });
+  // ...existing code...
+  const upcomingReviews = await prisma.performanceReview.count({ where: tenantId ? { tenantId, status: { in: ['DRAFT', 'IN_PROGRESS'] } } : { status: { in: ['DRAFT', 'IN_PROGRESS'] } } });
+  // ...existing code...
+  const currentMonthPayroll = await prisma.payroll.aggregate({ where: tenantId ? { tenantId, createdAt: { gte: currentMonth } } : { createdAt: { gte: currentMonth } }, _sum: { grossSalary: true } });
+  const previousMonthPayroll = await prisma.payroll.aggregate({ where: tenantId ? { tenantId, createdAt: { gte: previousMonth, lt: currentMonth } } : { createdAt: { gte: previousMonth, lt: currentMonth } }, _sum: { grossSalary: true } });
   const currentMonthCost = currentMonthPayroll._sum.grossSalary || 0;
   const previousMonthCost = previousMonthPayroll._sum.grossSalary || 0;
   const percentageChange = previousMonthCost > 0 ? Math.round(((currentMonthCost - previousMonthCost) / previousMonthCost) * 100 * 100) / 100 : 0;
-  const leaveBalances = await prisma.leaveBalance.aggregate({ where: { tenantId, year: currentYear }, _sum: { allocated: true, used: true } });
+  const leaveBalances = await prisma.leaveBalance.aggregate({ where: tenantId ? { tenantId, year: currentYear } : { year: currentYear }, _sum: { allocated: true, used: true } });
   const totalDaysAllocated = leaveBalances._sum.allocated || 0;
   const totalDaysUsed = leaveBalances._sum.used || 0;
   const utilizationRate = totalDaysAllocated > 0 ? Math.round((totalDaysUsed / totalDaysAllocated) * 100 * 100) / 100 : 0;
-  const branches = await prisma.branch.findMany({ where: { tenantId, status: 'ACTIVE' }, select: { id: true, name: true } });
+  const branches = await prisma.branch.findMany({ where: tenantId ? { tenantId, status: 'ACTIVE' } : { status: 'ACTIVE' }, select: { id: true, name: true } });
   const branchDistribution = await Promise.all(branches.map(async (branch) => {
-    const count = await prisma.employee.count({ where: { tenantId, branchId: branch.id, status: 'ACTIVE' } });
+    const count = await prisma.employee.count({ where: tenantId ? { tenantId, branchId: branch.id, status: 'ACTIVE' } : { branchId: branch.id, status: 'ACTIVE' } });
     const percentage = activeEmployees > 0 ? (count / activeEmployees) * 100 : 0;
     return { branch: branch.name, count, percentage: Math.round(percentage * 100) / 100 }; // Round to 2 decimal places
   }));
-  const newHires = await prisma.employee.count({ where: { tenantId, hireDate: { gte: currentMonth } } });
-  const pendingSalaryAdvances = await prisma.salaryAdvanceRequest.count({ where: { tenantId, status: 'PENDING' } });
-  const approvedSalaryAdvancesThisMonth = await prisma.salaryAdvanceRequest.count({ where: { tenantId, status: 'APPROVED', createdAt: { gte: currentMonth } } });
-  const totalOutstandingSalaryAdvances = await prisma.salaryAdvanceRequest.aggregate({ where: { tenantId, status: 'APPROVED' }, _sum: { outstandingBalance: true } });
+  const newHires = await prisma.employee.count({ where: tenantId ? { tenantId, hireDate: { gte: currentMonth } } : { hireDate: { gte: currentMonth } } });
+  // ...existing code...
+  const pendingSalaryAdvances = await prisma.salaryAdvanceRequest.count({ where: tenantId ? { tenantId, status: { in: ['PENDING', 'FORWARDEDTOHR'] } } : { status: { in: ['PENDING', 'FORWARDEDTOHR'] } } });
+  // ...existing code...
+  const approvedSalaryAdvancesThisMonth = await prisma.salaryAdvanceRequest.count({ where: tenantId ? { tenantId, status: 'APPROVED', createdAt: { gte: currentMonth } } : { status: 'APPROVED', createdAt: { gte: currentMonth } } });
+  const totalOutstandingSalaryAdvances = await prisma.salaryAdvanceRequest.aggregate({ where: tenantId ? { tenantId, status: 'APPROVED' } : { status: 'APPROVED' }, _sum: { outstandingBalance: true } });
 
   // Calculate real department distribution
   const departments = await prisma.department.findMany({ 
-    where: { tenantId, status: 'ACTIVE' }, 
+    where: tenantId ? { tenantId, status: 'ACTIVE' } : { status: 'ACTIVE' }, 
     select: { id: true, name: true } 
   });
   const departmentDistribution = await Promise.all(departments.map(async (dept) => {
     const count = await prisma.employee.count({ 
-      where: { tenantId, departmentId: dept.id, status: 'ACTIVE' } 
+      where: tenantId ? { tenantId, departmentId: dept.id, status: 'ACTIVE' } : { departmentId: dept.id, status: 'ACTIVE' } 
     });
     const percentage = activeEmployees > 0 ? (count / activeEmployees) * 100 : 0;
     return { 
@@ -142,7 +161,8 @@ export async function getDashboardMetrics(tenantId: string): Promise<any> {
     take: 10
   }).then(hires => hires.map(hire => ({
     id: hire.id,
-    name: `${hire.firstName} ${hire.lastName}`,
+    firstName: hire.firstName,
+    lastName: hire.lastName,
     position: hire.position || 'Not specified',
     department: hire.department?.name || 'Not assigned',
     hireDate: hire.hireDate?.toISOString().split('T')[0] || ''
@@ -385,7 +405,7 @@ export async function getDashboardMetrics(tenantId: string): Promise<any> {
       reviewsCount: deptRating._count.overallRating || 0
     };
   }));
-  const alerts: any[] = []; // TODO: Implement when needed
+  // Removed unused variable: alerts
 
   return {
     employees: {
@@ -1132,39 +1152,7 @@ export async function generateCustomAnalytics(
  * Get real-time metrics for dashboard
  */
 export async function getRealTimeMetrics(tenantId: string) {
-  try {
-    // Check API health by monitoring recent requests
-    const [activeUsers, pendingApprovals] = await Promise.all([
-      prisma.user.count({ where: { tenantId, status: 'ACTIVE' } }),
-      prisma.leaveRequest.count({ where: { tenantId, status: 'PENDING' } })
-    ]);
-    
-    // Simple DB test to see if there are any connection issues
-    let systemHealth = 'healthy';
-    try {
-      // Try a simple query to test DB connectivity
-      await prisma.$queryRaw`SELECT 1`;
-    } catch (dbError) {
-      console.error('Database connectivity issue detected:', dbError);
-      systemHealth = 'warning';
-    }
-    
-    return {
-      activeUsers,
-      pendingApprovals,
-      systemHealth,
-      lastUpdated: new Date().toISOString(),
-    };
-  } catch (error) {
-    console.error('Error getting real-time metrics:', error);
-    // If we can't connect to the database, report a critical status
-    return {
-      activeUsers: 0,
-      pendingApprovals: 0,
-      systemHealth: 'critical',
-      lastUpdated: new Date().toISOString(),
-    };
-  }
+  return await getDashboardMetrics(tenantId);
 }
 
 /**
@@ -1213,7 +1201,7 @@ export async function getSalaryAdvanceAnalytics(tenantId: string): Promise<{
 }> {
   try {
     const currentDate = new Date();
-    const oneYearAgo = new Date(currentDate.getFullYear() - 1, currentDate.getMonth(), currentDate.getDate());
+    // Removed unused variable: oneYearAgo
 
     // Request trends (last 12 months)
     const requestTrends = {
@@ -1252,9 +1240,7 @@ export async function getSalaryAdvanceAnalytics(tenantId: string): Promise<{
     }
 
     // Approval rates
-    const totalRequests = await prisma.salaryAdvanceRequest.count({
-      where: { tenantId },
-    });
+    // Removed unused variable: totalRequests
 
     const approvedRequests = await prisma.salaryAdvanceRequest.count({
       where: { tenantId, status: 'APPROVED' },

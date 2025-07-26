@@ -7,6 +7,7 @@ import { validate } from '../middleware/validate'; // generic validation result 
 const router = Router();
 
 router.get('/', userController.getUsers);
+router.get('/profile', userController.getCurrentUserProfile);
 router.get('/stats', userController.getUserStats);
 router.get('/roles', userController.getUserRoles);
 router.get('/departments', userController.getDepartments);

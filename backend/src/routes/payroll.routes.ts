@@ -23,13 +23,24 @@ import {
   getPayrollRecords,
   getPayrollRecordById,
   approvePayrollRecords,
+  // Removed unused import: processPayrollForPeriod
+  updatePayrollPeriod,
 } from '../controllers/payroll.controller';
 import { authenticate, restrictTo } from '../middleware/auth.middleware';
 
-const router = Router();
 
-// Apply authentication middleware to all routes
+//
+const router = Router();
+// Ensure all payroll routes require authentication and tenant context
 router.use(authenticate);
+
+
+/**
+ * @route PUT /api/payroll/periods/:id
+ * @desc Update a payroll period
+ * @access Private (Admin, HR Manager)
+ */
+router.put('/periods/:id', restrictTo(['ADMIN', 'HR_MANAGER']), updatePayrollPeriod);
 
 /**
  * @route GET /api/payroll/periods
@@ -181,9 +192,9 @@ router.post('/compliance/generate', restrictTo(['ADMIN', 'HR_MANAGER']), generat
 /**
  * @route GET /api/payroll/audit-logs
  * @desc Get payroll audit logs
- * @access Private (Admin)
+ * @access Private (Admin, HR Manager)
  */
-router.get('/audit-logs', restrictTo(['ADMIN']), getPayrollAuditLogs);
+router.get('/audit-logs', restrictTo(['ADMIN', 'HR_MANAGER']), getPayrollAuditLogs);
 
 /**
  * @route GET /api/payroll/employees
@@ -191,5 +202,11 @@ router.get('/audit-logs', restrictTo(['ADMIN']), getPayrollAuditLogs);
  * @access Private (Admin, HR Manager, Operations Manager)
  */
 router.get('/employees', restrictTo(['ADMIN', 'HR_MANAGER', 'OPERATIONS_MANAGER', 'EMPLOYEE']), getPayrollEmployees);
+/**
+ * @route DELETE /api/payroll/:employeeId/:periodId
+ * @desc Delete payroll record for a specific employee and period (for reprocessing)
+ * @access Private (Admin, HR Manager)
+ */
+router.delete('/:employeeId/:periodId', restrictTo(['ADMIN', 'HR_MANAGER']), require('../controllers/payroll.controller').deletePayrollForEmployeePeriod);
 
 export default router;

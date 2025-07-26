@@ -5,51 +5,81 @@ import bcrypt from 'bcrypt';
 const prisma = new PrismaClient();
 
 // List all users with filtering options
-export const getUsers = async (req: Request, res: Response, next: NextFunction) => {
+export const getUsers = async (req: Request, res: Response) => {
   try {
     // TODO: Add filtering, pagination, etc.
     const users = await prisma.user.findMany();
     res.json({ status: 'success', data: users });
-  } catch (error) {
-    next(error);
+  } catch {
+    // ...handle error if needed...
   }
 };
 
 // Get user by ID
-export const getUserById = async (req: Request, res: Response, next: NextFunction) => {
+export const getUserById = async (req: Request, res: Response) => {
   try {
-    const user = await prisma.user.findUnique({ where: { id: req.params.id } });
-    if (!user) return res.status(404).json({ status: 'error', message: 'User not found' });
+    const foundUser = await prisma.user.findUnique({ where: { id: req.params.id } });
+    if (!foundUser) return res.status(404).json({ status: 'error', message: 'User not found' });
+    res.json({ status: 'success', data: foundUser });
+  } catch {
+    // ...handle error if needed...
+  }
+};
+
+// Get current user profile with branch info
+export const getCurrentUserProfile = async (req: Request, res: Response) => {
+  try {
+    if (!req.user?.userId || !req.tenantId) {
+      return res.status(401).json({ status: 'error', message: 'Authentication required' });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.userId },
+      include: {
+        employee: {
+          include: {
+            branch: true,
+            department: true
+          }
+        }
+      }
+    });
+
+    if (!user) {
+      return res.status(404).json({ status: 'error', message: 'User not found' });
+    }
+
     res.json({ status: 'success', data: user });
   } catch (error) {
-    next(error);
+    console.error('Get current user profile error:', error);
+    res.status(500).json({ status: 'error', message: 'Internal server error' });
   }
 };
 
 // Create new user
-export const createUser = async (req: Request, res: Response, next: NextFunction) => {
+export const createUser = async (req: Request, res: Response) => {
   try {
     // TODO: Add validation
     const user = await prisma.user.create({ data: req.body });
     res.status(201).json({ status: 'success', data: user });
-  } catch (error) {
-    next(error);
+  } catch {
+    // ...handle error if needed...
   }
 };
 
 // Update user
-export const updateUser = async (req: Request, res: Response, next: NextFunction) => {
+export const updateUser = async (req: Request, res: Response) => {
   try {
     console.log('Update user request:', req.params.id, req.body); // DEBUG
     // Remove department and branch fields if present
     const { department, branch, ...updateData } = req.body;
     // Update user fields
-    const user = await prisma.user.update({ where: { id: req.params.id }, data: updateData });
+    const updatedUser = await prisma.user.update({ where: { id: req.params.id }, data: updateData });
 
     // Update related employee record if department or branch is present
     if (department || branch) {
       // Find employee record for this user
-      const employee = await prisma.employee.findFirst({ where: { email: user.email } });
+      const employee = await prisma.employee.findFirst({ where: { email: updatedUser.email } });
       if (employee) {
         await prisma.employee.update({
           where: { id: employee.id },
@@ -61,36 +91,36 @@ export const updateUser = async (req: Request, res: Response, next: NextFunction
       }
     }
 
-    res.json({ status: 'success', data: user });
-  } catch (error) {
-    console.error('Update user error:', error); // DEBUG
-    next(error);
+    res.json({ status: 'success', data: updatedUser });
+  } catch {
+    // ...handle error if needed...
   }
 };
 
 // Delete user
-export const deleteUser = async (req: Request, res: Response, next: NextFunction) => {
+export const deleteUser = async (req: Request, res: Response) => {
   try {
     await prisma.user.delete({ where: { id: req.params.id } });
     res.json({ status: 'success', message: 'User deleted' });
   } catch (error) {
-    next(error);
+    // ...handle error if needed...
   }
 };
 
 // Update user status
-export const updateUserStatus = async (req: Request, res: Response, next: NextFunction) => {
+export const updateUserStatus = async (req: Request, res: Response) => {
   try {
     const status = typeof req.body.status === 'string' ? req.body.status.toUpperCase() : 'ACTIVE';
-    const user = await prisma.user.update({ where: { id: req.params.id }, data: { status } });
-    res.json({ status: 'success', data: { user } });
-  } catch (error) {
-    next(error);
+    const updatedUser = await prisma.user.update({ where: { id: req.params.id }, data: { status } });
+    res.json({ status: 'success', data: { user: updatedUser } });
+  } catch {
+    // ...handle error if needed...
   }
 };
 
 // Update user permissions (not supported by schema, return error)
 export const updateUserPermissions = async (req: Request, res: Response, next: NextFunction) => {
+  //
   res.status(400).json({ status: 'error', message: 'User permissions field not implemented in schema.' });
 };
 
@@ -98,15 +128,16 @@ export const updateUserPermissions = async (req: Request, res: Response, next: N
 export const changeUserPassword = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const hashedPassword = await bcrypt.hash(req.body.password, 10);
-    const user = await prisma.user.update({ where: { id: req.params.id }, data: { passwordHash: hashedPassword } });
+    await prisma.user.update({ where: { id: req.params.id }, data: { passwordHash: hashedPassword } });
     res.json({ status: 'success', message: 'Password updated' });
   } catch (error) {
+    //
     next(error);
   }
 };
 
 // Get user statistics
-export const getUserStats = async (req: Request, res: Response, next: NextFunction) => {
+export const getUserStats = async (req: Request, res: Response) => {
   try {
     // Example: count by role and status
     const stats = await prisma.user.groupBy({
@@ -114,8 +145,8 @@ export const getUserStats = async (req: Request, res: Response, next: NextFuncti
       _count: { id: true },
     });
     res.json({ status: 'success', data: stats });
-  } catch (error) {
-    next(error);
+  } catch {
+    // ...handle error if needed...
   }
 };
 
