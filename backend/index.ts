@@ -1,7 +1,7 @@
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import { PrismaClient } from '@prisma/client';
-import config from './config/config';
+import config from './src/config/config';
 
 // Initialize Prisma client
 export const prisma = new PrismaClient();
@@ -36,7 +36,7 @@ app.get('/', (req: Request, res: Response) => {
 // Health check endpoint
 app.get('/api/health', async (req: Request, res: Response) => {
   let dbStatus = 'healthy';
-  let dbError = null;
+  let dbError: string | null = null;
   try {
     // Simple DB query to check connectivity
     await prisma.$queryRaw`SELECT 1`;
@@ -56,25 +56,25 @@ app.get('/api/health', async (req: Request, res: Response) => {
 });
 
 // Import routes
-import authRoutes from './routes/auth.routes';
-import departmentRoutes from './routes/department.routes';
-import branchRoutes from './routes/branch.routes';
-import employeeRoutes from './routes/employee.routes';
-import payrollRoutes from './routes/payroll.routes';
-import leaveRoutes from './routes/leave.routes';
-import analyticsRoutes from './routes/analytics.routes';
-import userRoutes from './routes/user.routes';
-import securityRoutes from './routes/security.routes';
-import workflowTemplatesRouter from './routes/workflowTemplates.routes';
-import performanceReviewsRouter from './routes/performanceReviews.routes';
-import integrationRoutes from './routes/integration.routes';
-import workflowRoutes from './routes/workflow.routes';
-import salaryAdvanceRoutes from './routes/salaryAdvance.routes';
-import securityMetricsRoutes from './routes/securityMetrics.routes';
-import adminRoutes from './routes/admin.routes';
-import trainingRoutes from './routes/training.routes';
-import notificationRoutes from './routes/notification.routes';
-import dashboardRoutes from './routes/dashboard.routes';
+import authRoutes from './src/routes/auth.routes';
+import departmentRoutes from './src/routes/department.routes';
+import branchRoutes from './src/routes/branch.routes';
+import employeeRoutes from './src/routes/employee.routes';
+import payrollRoutes from './src/routes/payroll.routes';
+import leaveRoutes from './src/routes/leave.routes';
+import analyticsRoutes from './src/routes/analytics.routes';
+import userRoutes from './src/routes/user.routes';
+import securityRoutes from './src/routes/security.routes';
+import workflowTemplatesRouter from './src/routes/workflowTemplates.routes';
+import performanceReviewsRouter from './src/routes/performanceReviews.routes';
+import integrationRoutes from './src/routes/integration.routes';
+import workflowRoutes from './src/routes/workflow.routes';
+import salaryAdvanceRoutes from './src/routes/salaryAdvance.routes';
+import securityMetricsRoutes from './src/routes/securityMetrics.routes';
+import adminRoutes from './src/routes/admin.routes';
+import trainingRoutes from './src/routes/training.routes';
+import notificationRoutes from './src/routes/notification.routes';
+import dashboardRoutes from './src/routes/dashboard.routes';
 
 // Use routes
 app.use('/api/auth', authRoutes);
@@ -95,7 +95,7 @@ app.use('/api/workflows', workflowRoutes);
 app.use('/api/approvals', workflowRoutes); // approvals handled in workflow.routes.ts
 app.use('/api/workflow-stats', workflowRoutes); // stats handled in workflow.routes.ts
 app.use('/api/salary-advances', salaryAdvanceRoutes); // salary advances route
-app.use('/api/security', securityMetricsRoutes); // security metrics route
+app.use('/api/security-metrics', securityMetricsRoutes); // security metrics route
 app.use('/api/admin', adminRoutes); // admin routes
 app.use('/api/trainings', trainingRoutes); // training routes
 app.use('/api/notifications', notificationRoutes); // notification routes
