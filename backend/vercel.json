@@ -17,6 +17,7 @@
       "maxDuration": 30
     }
   },
+  "outputDirectory": "dist",
   "env": {
     "NODE_ENV": "production"
   }
