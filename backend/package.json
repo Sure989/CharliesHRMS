@@ -12,6 +12,8 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
     "prisma:seed": "ts-node prisma/seed.ts",
+    "supabase:seed": "ts-node scripts/supabase-seed.ts",
+    "supabase:cleanup": "ts-node scripts/supabase-cleanup.ts",
     "db:setup": "npm run prisma:generate && npm run prisma:migrate && npm run prisma:seed",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
