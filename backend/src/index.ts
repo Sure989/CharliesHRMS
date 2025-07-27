@@ -2,6 +2,8 @@ import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import { PrismaClient } from '@prisma/client';
 import config from './config/config';
+import { createServer } from 'http';
+import { WebSocketServer } from 'ws';
 
 // Initialize Prisma client
 export const prisma = new PrismaClient();
@@ -11,9 +13,25 @@ const app = express();
 
 // CORS configuration
 app.use(cors({
-  origin: process.env.CORS_ORIGIN?.split(',') || '*',
+  origin: true, // Allow all origins for now
   credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  optionsSuccessStatus: 200
 }));
+
+// Additional CORS headers
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-Requested-With');
+  if (req.method === 'OPTIONS') {
+    res.sendStatus(200);
+  } else {
+    next();
+  }
+});
 
 // Middleware
 app.use(express.json());
@@ -57,6 +75,7 @@ app.get('/api/health', async (req: Request, res: Response) => {
 
 // Import routes
 import authRoutes from './routes/auth.routes';
+import sessionRoutes from './routes/session.routes';
 import departmentRoutes from './routes/department.routes';
 import branchRoutes from './routes/branch.routes';
 import employeeRoutes from './routes/employee.routes';
@@ -75,9 +94,11 @@ import adminRoutes from './routes/admin.routes';
 import trainingRoutes from './routes/training.routes';
 import notificationRoutes from './routes/notification.routes';
 import dashboardRoutes from './routes/dashboard.routes';
+import testRoutes from './routes/test.routes';
 
 // Use routes
 app.use('/api/auth', authRoutes);
+app.use('/api/session', sessionRoutes);
 app.use('/api/departments', departmentRoutes);
 app.use('/api/branches', branchRoutes);
 app.use('/api/employees', employeeRoutes);
@@ -100,6 +121,7 @@ app.use('/api/admin', adminRoutes); // admin routes
 app.use('/api/trainings', trainingRoutes); // training routes
 app.use('/api/notifications', notificationRoutes); // notification routes
 app.use('/api/dashboard', dashboardRoutes); // dashboard routes
+app.use('/api/test', testRoutes); // test routes
 // TODO: Add more routes
 
 // Error handling middleware
@@ -122,11 +144,11 @@ app.use((req: Request, res: Response) => {
   });
 });
 
-// Start the server only if not in test mode
-if (process.env.NODE_ENV !== 'test') {
-  const PORT = config.port;
+// Start the server only if not in test mode (no WebSocket for serverless)
+if (process.env.NODE_ENV !== 'test' && process.env.NODE_ENV !== 'production') {
+  const PORT = process.env.PORT || 5000;
   app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT} in ${config.nodeEnv} mode`);
+    console.log(`Server running on port ${PORT}`);
   });
 }
 
