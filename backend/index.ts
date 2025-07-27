@@ -52,6 +52,37 @@ app.get('/api/health', async (req: Request, res: Response) => {
   }
 });
 
+// Test endpoint to check seeded data
+app.get('/api/test', async (req: Request, res: Response) => {
+  try {
+    const tenants = await prisma.tenant.count();
+    const users = await prisma.user.count();
+    const employees = await prisma.employee.count();
+    const departments = await prisma.department.count();
+    const branches = await prisma.branch.count();
+    
+    res.json({
+      status: 'success',
+      message: 'Database test successful',
+      data: {
+        tenants,
+        users,
+        employees,
+        departments,
+        branches
+      },
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: 'error',
+      message: 'Database test failed',
+      error: error instanceof Error ? error.message : String(error),
+      timestamp: new Date().toISOString(),
+    });
+  }
+});
+
 // Import routes
 import authRoutes from './src/routes/auth.routes';
 import departmentRoutes from './src/routes/department.routes';
@@ -87,4 +118,13 @@ app.use((req: Request, res: Response) => {
   });
 });
 
+// For local development
+if (process.env.NODE_ENV !== 'production') {
+  const PORT = process.env.PORT || 5000;
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+  });
+}
+
+// For Vercel serverless
 export default app;
