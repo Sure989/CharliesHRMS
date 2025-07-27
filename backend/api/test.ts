@@ -1,13 +1,4 @@
-import { VercelRequest, VercelResponse } from '@vercel/node';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient({
-  datasources: {
-    db: {
-      url: process.env.DATABASE_URL,
-    },
-  },
-});
+import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') {
@@ -15,21 +6,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const tenants = await prisma.tenant.count();
-    const users = await prisma.user.count();
-    const employees = await prisma.employee.count();
-    const departments = await prisma.department.count();
-    const branches = await prisma.branch.count();
+    const { Client } = require('pg');
+    const client = new Client({
+      connectionString: process.env.DATABASE_URL,
+    });
+    
+    await client.connect();
+    
+    const tenants = await client.query('SELECT COUNT(*) FROM "Tenant"');
+    const users = await client.query('SELECT COUNT(*) FROM "User"');
+    const employees = await client.query('SELECT COUNT(*) FROM "Employee"');
+    
+    await client.end();
     
     res.json({
       status: 'success',
       message: 'Database test successful',
       data: {
-        tenants,
-        users,
-        employees,
-        departments,
-        branches
+        tenants: parseInt(tenants.rows[0].count),
+        users: parseInt(users.rows[0].count),
+        employees: parseInt(employees.rows[0].count),
       },
       timestamp: new Date().toISOString(),
     });
@@ -40,7 +36,5 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       error: error instanceof Error ? error.message : String(error),
       timestamp: new Date().toISOString(),
     });
-  } finally {
-    await prisma.$disconnect();
   }
 }
