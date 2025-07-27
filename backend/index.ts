@@ -52,6 +52,24 @@ app.get('/api/health', async (req: Request, res: Response) => {
   }
 });
 
+// Import routes
+import authRoutes from './src/routes/auth.routes';
+import departmentRoutes from './src/routes/department.routes';
+import branchRoutes from './src/routes/branch.routes';
+import employeeRoutes from './src/routes/employee.routes';
+import userRoutes from './src/routes/user.routes';
+import leaveRoutes from './src/routes/leave.routes';
+import notificationRoutes from './src/routes/notification.routes';
+
+// Use routes
+app.use('/api/auth', authRoutes);
+app.use('/api/departments', departmentRoutes);
+app.use('/api/branches', branchRoutes);
+app.use('/api/employees', employeeRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/leave', leaveRoutes);
+app.use('/api/notifications', notificationRoutes);
+
 // Error handling middleware
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
   console.error(err.stack);
