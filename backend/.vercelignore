@@ -1,0 +1,6 @@
+tests/
+*.test.ts
+*.test.js
+jest.config.*
+coverage/
+.nyc_output/
