@@ -15,6 +15,7 @@
     "supabase:seed": "ts-node scripts/supabase-seed.ts",
     "supabase:cleanup": "ts-node scripts/supabase-cleanup.ts",
     "db:setup": "npm run prisma:generate && npm run prisma:migrate && npm run prisma:seed",
+    "postinstall": "prisma generate",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "prisma": {

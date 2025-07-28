@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Backend Test</title>
+</head>
+<body>
+    <h1>Backend API Test</h1>
+    <div id="results"></div>
+    
+    <script>
+        const API_BASE = 'https://charlies-hrms-backend-2mu4sqhg4-sures-projects-4f526083.vercel.app';
+        const results = document.getElementById('results');
+        
+        async function testEndpoint(name, url, options = {}) {
+            try {
+                const response = await fetch(url, options);
+                const data = await response.json();
+                results.innerHTML += `<h3>${name}</h3><pre>${JSON.stringify(data, null, 2)}</pre>`;
+            } catch (error) {
+                results.innerHTML += `<h3>${name} - ERROR</h3><pre>${error.message}</pre>`;
+            }
+        }
+        
+        // Test endpoints
+        testEndpoint('Health Check', `${API_BASE}/api/health`);
+        testEndpoint('Root', `${API_BASE}/`);
+        
+        // Test login
+        testEndpoint('Login Test', `${API_BASE}/api/auth/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                email: 'admin@charlieshrms.com',
+                password: 'password123'
+            })
+        });
+    </script>
+</body>
+</html>
