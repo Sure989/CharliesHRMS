@@ -1,10 +1,14 @@
 generator client {
   provider = "prisma-client-js"
+  previewFeatures = ["clientExtensions"]
+  output   = "./generated/client"
 }
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+  // directUrl can be set for migrations if needed
+  // directUrl = env("DIRECT_URL")
 }
 
 model Tenant {
