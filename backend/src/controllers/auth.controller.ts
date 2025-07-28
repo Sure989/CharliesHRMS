@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import bcrypt from 'bcrypt';
-import { prisma } from '../index';
+import prisma from '../lib/prisma';
 import { generateToken, generateRefreshToken, TokenPayload } from '../utils/jwt';
 import { getUserPermissions } from '../utils/permissions';
 

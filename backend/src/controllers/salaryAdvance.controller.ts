@@ -26,7 +26,7 @@ export const updateSalaryAdvanceRequest = async (req: Request, res: Response) =>
   }
 };
 import { createSalaryAdvanceRequest as createSalaryAdvanceRequestService } from '../services/salaryAdvance.service';
-import { prisma } from '../index';
+import prisma from '../lib/prisma';
 
 /**
  * Create a new salary advance request

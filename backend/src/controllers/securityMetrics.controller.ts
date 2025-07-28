@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { prisma } from '../index';
+import prisma from '../lib/prisma';
 
 // Helper function to seed initial audit logs if none exist
 async function seedInitialAuditLogsIfNeeded(tenantId: string) {

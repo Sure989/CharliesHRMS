@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { prisma } from '../index';
+import prisma from '../lib/prisma';
 
 export const getSecuritySettings = async (req: Request, res: Response) => {
   try {

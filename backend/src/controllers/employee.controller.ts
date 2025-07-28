@@ -40,7 +40,7 @@ export const getEmployeeByEmployeeNumber = async (req: Request, res: Response) =
   }
 };
 import { Request, Response } from 'express';
-import { prisma } from '../index';
+import prisma from '../lib/prisma';
 
 /**
  * Get all employees for a tenant

@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { prisma } from '../index';
+import prisma from '../lib/prisma';
 
 // Get recent activities for an employee
 export const getEmployeeActivity = async (req: Request, res: Response) => {

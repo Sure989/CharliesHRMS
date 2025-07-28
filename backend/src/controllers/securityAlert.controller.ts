@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { prisma } from '../index';
+import prisma from '../lib/prisma';
 
 // Helper function to seed initial security alerts if none exist
 async function seedInitialAlertsIfNeeded(tenantId: string) {

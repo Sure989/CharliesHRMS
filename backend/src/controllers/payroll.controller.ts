@@ -188,7 +188,7 @@ export const processPayrollForPeriod = async (req: Request, res: Response) => {
  * @route DELETE /api/payroll/:employeeId/:periodId
  */
 import { Request, Response } from 'express';
-import { prisma } from '../index';
+import prisma from '../lib/prisma';
 import { calculatePayroll, generatePayStubNumber } from '../services/payrollCalculation.service';
 
 export const deletePayrollForEmployeePeriod = async (req: Request, res: Response) => {
