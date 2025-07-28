@@ -10,11 +10,16 @@ import { WebSocketServer } from 'ws';
 const app = express();
 
 // CORS configuration with restricted origins
-const allowedOrigins = [
-  'https://charlies-hrms-frontend.vercel.app',
-  'http://localhost:4000',
-  'https://localhost:4000'
-];
+const allowedOrigins = process.env.CORS_ORIGIN
+  ? process.env.CORS_ORIGIN.split(',')
+  : [
+      'https://charlies-hrms-frontend.vercel.app',
+      'https://charlies-hrms-frontend-pu9plfynm-sures-projects-4f526083.vercel.app',
+      'http://localhost:4000',
+      'http://localhost:3000',
+      'http://localhost:5173',
+      'https://localhost:4000'
+    ];
 
 app.use(cors({
   origin: function (origin, callback) {
