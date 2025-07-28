@@ -43,12 +43,12 @@ router.get('/metrics', async (req, res) => {
  * @desc Test database connection
  * @access Private
  */
+import prisma from '../lib/prisma';
+
 router.get('/test', async (req, res) => {
   try {
-    const { prisma } = await import('../index');
     const employeeCount = await prisma.employee.count();
     const userCount = await prisma.user.count();
-    
     return res.status(200).json({
       status: 'success',
       data: {
