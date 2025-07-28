@@ -42,7 +42,7 @@
     "@types/ws": "^8.18.1",
     "@typescript-eslint/eslint-plugin": "^8.38.0",
     "@typescript-eslint/parser": "^8.38.0",
-    "@vercel/node": "^5.3.7",
+    "@vercel/node": "^4.0.0",
     "axios": "^1.10.0",
     "bcrypt": "^5.1.1",
     "cors": "^2.8.5",
@@ -73,7 +73,6 @@
     "ts-node": "^10.9.2"
   },
   "overrides": {
-    "esbuild": "^0.25.0",
-    "path-to-regexp": "^8.0.0"
+    "esbuild": "^0.25.0"
   }
 }
