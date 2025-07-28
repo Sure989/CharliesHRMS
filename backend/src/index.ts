@@ -1,12 +1,10 @@
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
-import { PrismaClient } from '@prisma/client';
+import prisma from './lib/prisma';
 import config from './config/config';
 import { createServer } from 'http';
 import { WebSocketServer } from 'ws';
 
-// Initialize Prisma client
-export const prisma = new PrismaClient();
 
 // Initialize Express app
 const app = express();

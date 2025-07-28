@@ -1,8 +1,8 @@
-import { PrismaClient } from '@prisma/client';
+import prisma from '../src/lib/prisma';
 import bcrypt from 'bcrypt';
 import dotenv from 'dotenv';
 
-dotenv.config();
+dotenv.config({ path: '.env' });
 
 async function main() {
   const dbUrl = process.env.DATABASE_URL;
@@ -11,7 +11,7 @@ async function main() {
     process.exit(1);
   }
 
-  const prisma = new PrismaClient();
+  // Use imported prisma client
   
   try {
     console.log('🚀 Starting Supabase seeding...');

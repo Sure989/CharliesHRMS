@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
-import { prisma } from '../index';
+import prisma from '../lib/prisma';
+import { supabaseAdmin } from '../lib/supabase-admin';
 import {
   getSystemStatus,
   getRecentSystemActivities,
@@ -397,17 +398,26 @@ export const createExperimentalFeatureController = async (req: Request, res: Res
       });
     }
 
-    const feature = await experimentalFeaturesService.createFeature(req.tenantId, {
-      key,
-      name,
-      description,
-      enabled,
-      createdBy: req.user?.userId
-    });
+    // Use Supabase admin to bypass RLS
+    const { data, error } = await supabaseAdmin
+      .from('experimental_features')
+      .insert({
+        key,
+        name,
+        description,
+        enabled,
+        created_by: req.user?.userId,
+        tenant_id: req.tenantId,
+      })
+      .select();
+
+    if (error) {
+      throw new Error(error.message);
+    }
 
     return res.status(201).json({
       status: 'success',
-      data: feature,
+      data: data ? data[0] : null,
     });
   } catch (error) {
     console.error('Create experimental feature error:', error);
