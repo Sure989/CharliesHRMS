@@ -11,14 +11,13 @@ const app = express();
 
 // CORS configuration with restricted origins
 const allowedOrigins = [
+  'https://charlies-hrms-frontend.vercel.app',
   'http://localhost:4000',
-  'https://localhost:4000',
-  'https://charlies-hrms-frontend.vercel.app'
+  'https://localhost:4000'
 ];
 
 app.use(cors({
   origin: function (origin, callback) {
-    // allow requests with no origin (like mobile apps, curl, etc.)
     if (!origin) return callback(null, true);
     if (allowedOrigins.includes(origin)) {
       return callback(null, true);

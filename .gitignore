@@ -1,0 +1,11 @@
+# Ignore Supabase temp and secret files
+backend/supabase/.temp/*
+.env
+backend/.env
+frontend/.env*
+backend/.env.txt
+.env
+.env.*
+backend/.env
+frontend/.env
+.vercel
