@@ -29,7 +29,7 @@ const config: Config = {
     refreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d',
   },
   cors: {
-    origin: process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : 'https://chalies-hrms-frontend.vercel.app',
+    origin: process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : 'https://charlies-hrms-frontend.vercel.app',
   },
   db: {
     url: process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/hrms_db?schema=public',

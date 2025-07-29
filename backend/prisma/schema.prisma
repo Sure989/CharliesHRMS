@@ -1,7 +1,7 @@
 generator client {
   provider = "prisma-client-js"
   previewFeatures = ["clientExtensions"]
-  output   = "./generated/client"
+  // Removed custom output path - use default location
 }
 
 datasource db {

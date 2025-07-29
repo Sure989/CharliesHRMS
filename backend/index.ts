@@ -11,7 +11,7 @@ const app = express();
 const allowedOrigins = process.env.CORS_ORIGIN
   ? process.env.CORS_ORIGIN.split(',')
   : [
-      'https://chalies-hrms-frontend.vercel.app'
+      'https://charlies-hrms-frontend.vercel.app'
     ];
 
 app.use(cors({

@@ -1,9 +1,7 @@
 // Script to list all users and their linked employee records
 // Run with: npx ts-node scripts/listUsersWithEmployees.ts
 
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { prisma } from '../src/lib/prisma';
 
 async function main() {
   const users = await prisma.user.findMany();

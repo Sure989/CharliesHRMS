@@ -1,9 +1,7 @@
 import express from 'express';
-import { PrismaClient } from '@prisma/client';
-
+import { prisma } from '../lib/prisma';
 //
 const router = express.Router();
-const prisma = new PrismaClient();
 
 // GET all workflow templates (optionally filter by tenant)
 router.get('/api/workflow-templates', async (req, res) => {

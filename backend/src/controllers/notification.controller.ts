@@ -4,9 +4,7 @@ import { TokenPayload } from '../utils/jwt';
 interface AuthRequest extends Request {
   user?: TokenPayload;
 }
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { prisma } from '../lib/prisma';
 
 
 // Get all notifications for a user (optionally filter by read status)

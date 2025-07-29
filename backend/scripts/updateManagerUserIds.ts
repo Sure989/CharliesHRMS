@@ -1,6 +1,4 @@
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { prisma } from '../src/lib/prisma';
 
 // Map branch names to manager user IDs (replace with your actual data)
 const branchManagerMap: Record<string, string> = {

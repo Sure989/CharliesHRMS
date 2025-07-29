@@ -1,6 +1,4 @@
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { prisma } from '../src/lib/prisma';
 
 async function removeDuplicateIntegrations() {
   console.log('Removing duplicate integrations...');
@@ -14,22 +12,23 @@ async function removeDuplicateIntegrations() {
     console.log(`Found ${integrations.length} total integrations`);
     
     // Group by name and tenantId to find duplicates
-    const grouped = integrations.reduce((acc, integration) => {
+    const grouped = integrations.reduce((acc: Record<string, typeof integrations>, integration) => {
       const key = `${integration.name}_${integration.tenantId}`;
       if (!acc[key]) {
         acc[key] = [];
       }
       acc[key].push(integration);
       return acc;
-    }, {} as Record<string, any[]>);
+    }, {} as Record<string, typeof integrations>);
     
     // Remove duplicates (keep the first one, delete the rest)
     for (const [key, group] of Object.entries(grouped)) {
-      if (group.length > 1) {
-        console.log(`Found ${group.length} duplicates for ${group[0].name}`);
+      const integrationsGroup = group as typeof integrations;
+      if (integrationsGroup.length > 1) {
+        console.log(`Found ${integrationsGroup.length} duplicates for ${integrationsGroup[0].name}`);
         
         // Delete all but the first one
-        const toDelete = group.slice(1);
+        const toDelete = integrationsGroup.slice(1);
         for (const duplicate of toDelete) {
           console.log(`Deleting duplicate integration: ${duplicate.name} (ID: ${duplicate.id})`);
           

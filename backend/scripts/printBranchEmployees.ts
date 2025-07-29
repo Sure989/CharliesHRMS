@@ -1,6 +1,5 @@
 // Script to print all employees for a given branchId and tenantId
-import { PrismaClient } from '@prisma/client';
-const prisma = new PrismaClient();
+import { prisma } from '../src/lib/prisma';
 
 const branchId = process.argv[2]; // Pass as first argument
 const tenantId = process.argv[3]; // Pass as second argument

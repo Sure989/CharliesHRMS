@@ -1,9 +1,7 @@
 // updateTenantId.ts
 // Usage: npx ts-node updateTenantId.ts <oldTenantId> <newTenantId>
 
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { prisma } from '../src/lib/prisma';
 
 async function updateTenantId(oldTenantId: string, newTenantId: string) {
   // List all tables/fields that reference tenantId

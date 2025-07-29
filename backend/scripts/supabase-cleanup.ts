@@ -2,7 +2,7 @@ import { PrismaClient } from '@prisma/client';
 import dotenv from 'dotenv';
 
 dotenv.config();
-const prisma = new PrismaClient();
+import { prisma } from '../src/lib/prisma';
 
 async function safeDelete(operation: () => Promise<any>, name: string) {
   try {

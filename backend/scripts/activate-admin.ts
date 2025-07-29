@@ -1,6 +1,4 @@
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { prisma } from '../src/lib/prisma';
 
 async function activateAdmin() {
   const email = 'admin@charlieshrms.com'; // Change to your admin email if different

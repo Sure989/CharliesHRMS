@@ -1,8 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/prisma';
 import bcrypt from 'bcrypt';
 
-const prisma = new PrismaClient();
 
 // List all users with filtering options
 export const getUsers = async (req: Request, res: Response) => {

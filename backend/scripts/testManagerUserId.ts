@@ -1,9 +1,7 @@
 // Script to test if managerUserId is recognized by Prisma client
 // Run with: npx ts-node scripts/testManagerUserId.ts
 
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { prisma } from '../src/lib/prisma';
 
 async function main() {
   const branches = await prisma.branch.findMany();
