@@ -5,7 +5,19 @@ import prisma from './src/lib/prisma';
 
 const app = express();
 
-// CORS configuration
+import cors from 'cors';
+const allowedOrigins = process.env.CORS_ORIGIN
+  ? process.env.CORS_ORIGIN.split(',')
+  : [
+      'https://charlies-hrms-frontend.vercel.app'
+    ];
+app.use(cors({
+  origin: allowedOrigins,
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+// ...existing code...
 
 // Use CORS_ORIGIN from environment or fallback to defaults
 const allowedOrigins = process.env.CORS_ORIGIN
