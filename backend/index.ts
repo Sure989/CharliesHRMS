@@ -11,7 +11,7 @@ const allowedOrigins = process.env.CORS_ORIGIN
       'https://charlies-hrms-frontend.vercel.app'
     ];
 app.use(cors({
-  origin: allowedOrigins,
+  origin: true, // Dynamically reflect request origin
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
