@@ -15,8 +15,10 @@ import { developmentConfig } from './environments/development';
 import { productionConfig } from './environments/production';
 import { testConfig } from './environments/test';
 
-// Load environment variables from .env file
-dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+// Only load .env file in non-production environments
+if (process.env.NODE_ENV !== 'production') {
+  dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+}
 
 export interface AppConfig {
   server: ServerConfig;
