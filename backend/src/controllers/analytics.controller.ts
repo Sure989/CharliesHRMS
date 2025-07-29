@@ -10,6 +10,9 @@ import {
   getDiversityAnalytics as getDiversityAnalyticsService,
   getAttendanceTrends as getAttendanceTrendsService,
   getRealTimeMetrics as getRealTimeMetricsService,
+  getAuditTrail as getAuditTrailService,
+  getSalaryAdvanceAnalytics as getSalaryAdvanceAnalyticsService,
+  getTrainingAnalytics as getTrainingAnalyticsService,
 } from '../services/analytics.service';
 
 /**
@@ -423,7 +426,7 @@ export const getAuditTrail = async (req: Request, res: Response) => {
       });
     }
     // Limit to last 10 activities for dashboard
-    const result = await (await import('../services/analytics.service')).getAuditTrail({ tenantId: req.tenantId, limit: 10 });
+    const result = await getAuditTrailService({ tenantId: req.tenantId, limit: 10 });
     return res.status(200).json({
       status: 'success',
       data: result.data,
@@ -450,7 +453,7 @@ export const getSalaryAdvanceAnalytics = async (req: Request, res: Response) => 
       });
     }
 
-    const analytics = await (await import('../services/analytics.service')).getSalaryAdvanceAnalytics(req.tenantId);
+    const analytics = await getSalaryAdvanceAnalyticsService(req.tenantId);
 
     return res.status(200).json({
       status: 'success',
@@ -478,7 +481,7 @@ export const getTraining = async (req: Request, res: Response) => {
       });
     }
 
-    const analytics = await (await import('../services/analytics.service')).getTrainingAnalytics(req.tenantId);
+    const analytics = await getTrainingAnalyticsService(req.tenantId);
 
     return res.status(200).json({
       status: 'success',
@@ -491,4 +494,36 @@ export const getTraining = async (req: Request, res: Response) => {
       message: 'Internal server error while fetching training analytics',
     });
   }
+};
+
+/**
+ * Get custom reports
+ * @route GET /api/analytics/reports
+ */
+export const getCustomReports = async (req: Request, res: Response) => {
+  res.status(501).json({ message: 'Not implemented' });
+};
+
+/**
+ * Schedule a report
+ * @route POST /api/analytics/reports/:reportId/schedule
+ */
+export const scheduleReport = async (req: Request, res: Response) => {
+  res.status(501).json({ message: 'Not implemented' });
+};
+
+/**
+ * Get system alerts
+ * @route GET /api/analytics/alerts
+ */
+export const getSystemAlerts = async (req: Request, res: Response) => {
+  res.status(501).json({ message: 'Not implemented' });
+};
+
+/**
+ * Mark an alert as read
+ * @route PATCH /api/analytics/alerts/:alertId/read
+ */
+export const markAlertAsRead = async (req: Request, res: Response) => {
+  res.status(501).json({ message: 'Not implemented' });
 };

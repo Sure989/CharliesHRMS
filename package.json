@@ -1,5 +1,21 @@
 {
+  "name": "charlies-hrms",
+  "version": "1.0.0",
+  "description": "Charlie's Human Resource Management System",
+  "scripts": {
+    "validate-env": "node validate-environment.js",
+    "setup": "npm run validate-env",
+    "dev": "concurrently \"npm run dev --prefix backend\" \"npm run dev --prefix frontend\"",
+    "build": "npm run build --prefix backend && npm run build --prefix frontend",
+    "start": "npm run start --prefix backend"
+  },
   "dependencies": {
     "ws": "^8.18.3"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }

@@ -2,9 +2,9 @@ import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import prisma from './lib/prisma';
 import config from './config/config';
-import { createServer } from 'http';
-import { WebSocketServer } from 'ws';
 
+// Note: WebSocket imports removed for serverless compatibility
+// WebSocket functionality is disabled in production/serverless environments
 
 // Initialize Express app
 const app = express();
@@ -93,6 +93,7 @@ import trainingRoutes from './routes/training.routes';
 import notificationRoutes from './routes/notification.routes';
 import dashboardRoutes from './routes/dashboard.routes';
 import testRoutes from './routes/test.routes';
+import performanceRoutes from './routes/performance.routes';
 
 // Use routes
 app.use('/api/auth', authRoutes);
@@ -120,6 +121,7 @@ app.use('/api/trainings', trainingRoutes); // training routes
 app.use('/api/notifications', notificationRoutes); // notification routes
 app.use('/api/dashboard', dashboardRoutes); // dashboard routes
 app.use('/api/test', testRoutes); // test routes
+app.use('/api/performance', performanceRoutes); // performance routes
 // TODO: Add more routes
 
 // Error handling middleware

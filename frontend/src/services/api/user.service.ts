@@ -210,7 +210,23 @@ class UserService {
     }
   }
 
-  // getDepartments removed
+  /**
+   * Get available departments
+   */
+  async getDepartments(): Promise<Array<{ id: string; name: string }>> {
+    try {
+      const response = await apiClient.get<Array<{ id: string; name: string }>>('/users/departments');
+      
+      if (response.status === 'success' && response.data) {
+        return response.data;
+      }
+      
+      throw new Error(response.message || 'Failed to get departments');
+    } catch (error) {
+      console.error('Get departments error:', error);
+      throw error;
+    }
+  }
 
   /**
    * Get available permissions

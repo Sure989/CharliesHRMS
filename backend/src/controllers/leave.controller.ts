@@ -1,9 +1,10 @@
 import { Request, Response } from 'express';
 import prisma from '../lib/prisma';
+import { leaveService } from '../services/configuredServices';
 import {
   calculateWorkingDays,
   validateLeaveRequest,
-  updateLeaveBalance,
+  updateLeaveBalance as updateLeaveBalanceService,
   processLeaveRequestDecision,
   // eslint-disable-next-line no-unused-vars
   initializeEmployeeLeaveBalances,
@@ -165,12 +166,12 @@ export const submitLeaveRequest = async (req: Request, res: Response) => {
     // If employee is ops manager, route to HR
     if (employee?.user?.role === 'OPS_MANAGER' || employee?.position === 'Operations Manager') {
       const hrUser = await prisma.user.findFirst({
-        where: { tenantId: req.tenantId, role: 'HR' },
+        where: { tenantId: req.tenantId, role: leaveService.getHRRole() },
       });
       console.log(`[LeaveRequest] Employee is OPS_MANAGER or position 'Operations Manager'. Routing to HR.`);
       if (hrUser) {
         approverId = hrUser.id;
-        approverRole = 'HR';
+        approverRole = leaveService.getHRRole();
         console.log(`[LeaveRequest] Approver assigned: HR (userId=${approverId}) for employeeId=${employeeId}`);
       }
     } else if (employee?.branchId) {
@@ -191,22 +192,22 @@ export const submitLeaveRequest = async (req: Request, res: Response) => {
       if (!approverId) {
         // Fallback to HR
         const hrUser = await prisma.user.findFirst({
-          where: { tenantId: req.tenantId, role: 'HR' },
+          where: { tenantId: req.tenantId, role: leaveService.getFallbackApproverRole() },
         });
         if (hrUser) {
           approverId = hrUser.id;
-          approverRole = 'HR';
+          approverRole = leaveService.getFallbackApproverRole();
           console.log(`[LeaveRequest] Approver fallback: HR (userId=${approverId}) for employeeId=${employeeId}`);
         }
       }
     } else {
       // No branch, fallback to HR
       const hrUser = await prisma.user.findFirst({
-        where: { tenantId: req.tenantId, role: 'HR' },
+        where: { tenantId: req.tenantId, role: leaveService.getFallbackApproverRole() },
       });
       if (hrUser) {
         approverId = hrUser.id;
-        approverRole = 'HR';
+        approverRole = leaveService.getFallbackApproverRole();
         console.log(`[LeaveRequest] Approver fallback: HR (userId=${approverId}) for employeeId=${employeeId}`);
       }
     }
@@ -246,7 +247,7 @@ export const submitLeaveRequest = async (req: Request, res: Response) => {
 
     // Update leave balance
     const year = start.getFullYear();
-    await updateLeaveBalance(employeeId, leaveTypeId, year, req.tenantId);
+    await updateLeaveBalanceService(employeeId, leaveTypeId, year, req.tenantId);
 
     return res.status(201).json({
       status: 'success',
@@ -587,3 +588,54 @@ export const createHoliday = async (req: Request, res: Response) => {
   }
 };
 
+export const updateLeaveType = async (req: Request, res: Response) => {
+  res.status(501).json({ message: 'Not implemented' });
+};
+
+export const deleteLeaveType = async (req: Request, res: Response) => {
+  res.status(501).json({ message: 'Not implemented' });
+};
+
+export const updateLeaveBalance = async (req: Request, res: Response) => {
+  res.status(501).json({ message: 'Not implemented' });
+};
+
+export const getLeaveRequestById = async (req: Request, res: Response) => {
+  res.status(501).json({ message: 'Not implemented' });
+};
+
+export const updateLeaveRequest = async (req: Request, res: Response) => {
+  res.status(501).json({ message: 'Not implemented' });
+};
+
+export const cancelLeaveRequest = async (req: Request, res: Response) => {
+  res.status(501).json({ message: 'Not implemented' });
+};
+
+export const bulkApproveLeaveRequests = async (req: Request, res: Response) => {
+  res.status(501).json({ message: 'Not implemented' });
+};
+
+export const getLeaveCalendar = async (req: Request, res: Response) => {
+  res.status(501).json({ message: 'Not implemented' });
+};
+
+export const getLeaveStatistics = async (req: Request, res: Response) => {
+  res.status(501).json({ message: 'Not implemented' });
+};
+
+export const exportLeaveData = async (req: Request, res: Response) => {
+  res.status(501).json({ message: 'Not implemented' });
+};
+
+export const getPendingApprovals = async (req: Request, res: Response) => {
+  res.status(501).json({ message: 'Not implemented' });
+};
+
+export const checkLeaveConflicts = async (req: Request, res: Response) => {
+  res.status(501).json({ message: 'Not implemented' });
+};
+
+export const getLeavePolicy = async (req: Request, res: Response) => {
+  res.status(501).json({ message: 'Not implemented' });
+};

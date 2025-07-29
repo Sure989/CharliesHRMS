@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { getDashboardMetrics } from '../services/analytics.service';
+import { getEmployeeDashboard } from '../controllers/dashboard.controller';
 import { authenticate } from '../middleware/auth.middleware';
 
 const router = Router();
@@ -66,5 +67,7 @@ router.get('/test', async (req, res) => {
     });
   }
 });
+
+router.get('/employee/:employeeId', getEmployeeDashboard);
 
 export default router;

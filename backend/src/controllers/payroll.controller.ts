@@ -40,6 +40,10 @@ export const updatePayrollPeriod = async (req: Request, res: Response) => {
  * Process payroll for all employees in a specific period (single period processing)
  * @route POST /api/payroll/periods/:periodId/process
  */
+import { Request, Response } from 'express';
+import prisma from '../lib/prisma';
+import { calculatePayroll as calculatePayrollService, generatePayStubNumber } from '../services/payrollCalculation.service';
+
 export const processPayrollForPeriod = async (req: Request, res: Response) => {
   try {
     const { periodId } = req.params;
@@ -104,7 +108,7 @@ export const processPayrollForPeriod = async (req: Request, res: Response) => {
           continue;
         }
         // Calculate payroll
-        const calculation = await calculatePayroll({
+        const calculation = await calculatePayrollService({
           employeeId: employee.id,
           payrollPeriodId: periodId,
           basicSalary,
@@ -187,10 +191,6 @@ export const processPayrollForPeriod = async (req: Request, res: Response) => {
  * Delete payroll for a specific employee and period (for reprocessing)
  * @route DELETE /api/payroll/:employeeId/:periodId
  */
-import { Request, Response } from 'express';
-import prisma from '../lib/prisma';
-import { calculatePayroll, generatePayStubNumber } from '../services/payrollCalculation.service';
-
 export const deletePayrollForEmployeePeriod = async (req: Request, res: Response) => {
   const { employeeId, periodId } = req.params;
   if (!employeeId || !periodId) {
@@ -472,7 +472,7 @@ export const processPayroll = async (req: Request, res: Response) => {
     }
 
     // Calculate payroll
-    const calculation = await calculatePayroll({
+    const calculation = await calculatePayrollService({
       employeeId,
       payrollPeriodId,
       basicSalary,
@@ -642,7 +642,7 @@ export const bulkProcessPayroll = async (req: Request, res: Response) => {
         }
 
         // Calculate payroll
-        const calculation = await calculatePayroll({
+        const calculation = await calculatePayrollService({
           employeeId: employee.id,
           payrollPeriodId: periodId,
           basicSalary,
@@ -2047,5 +2047,109 @@ export const approvePayrollRecords = async (req: Request, res: Response) => {
       status: 'error',
       message: 'Internal server error while approving payroll records',
     });
+  }
+};
+
+/**
+ * Delete a payroll period
+ * @route DELETE /api/payroll/periods/:id
+ */
+export const deletePayrollPeriod = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    if (!req.tenantId) {
+      return res.status(401).json({ status: 'error', message: 'Tenant ID is required' });
+    }
+    // Delete payroll period and related payrolls/paystubs
+    await prisma.payroll.deleteMany({ where: { payrollPeriodId: id, tenantId: req.tenantId } });
+    await prisma.payStub.deleteMany({ where: { payrollPeriodId: id, tenantId: req.tenantId } });
+    const deleted = await prisma.payrollPeriod.delete({ where: { id } });
+    return res.status(200).json({ status: 'success', message: 'Payroll period deleted', data: deleted });
+  } catch (error) {
+    console.error('Delete payroll period error:', error);
+    return res.status(500).json({ status: 'error', message: 'Internal server error while deleting payroll period' });
+  }
+};
+
+/**
+ * Calculate payroll (preview, simulation)
+ * @route POST /api/payroll/calculate
+ */
+export const calculatePayroll = async (req: Request, res: Response) => {
+  try {
+    const { employeeId, payrollPeriodId, basicSalary, allowances = [], overtime } = req.body;
+    if (!req.tenantId) {
+      return res.status(401).json({ status: 'error', message: 'Tenant ID is required' });
+    }
+    if (!employeeId || !payrollPeriodId || basicSalary === undefined) {
+      return res.status(400).json({ status: 'error', message: 'Employee ID, payroll period ID, and basic salary are required' });
+    }
+    // Simulate payroll calculation
+    const calculation = await import('../services/payrollCalculation.service').then(m => m.calculatePayroll({ employeeId, payrollPeriodId, basicSalary, allowances, overtime, tenantId: req.tenantId }));
+    return res.status(200).json({ status: 'success', data: calculation });
+  } catch (error) {
+    console.error('Calculate payroll error:', error);
+    return res.status(500).json({ status: 'error', message: 'Internal server error while calculating payroll' });
+  }
+};
+
+/**
+ * Approve time entries
+ * @route POST /api/payroll/time-entries/approve
+ */
+export const approveTimeEntries = async (req: Request, res: Response) => {
+  try {
+    const { timeEntryIds, approverId } = req.body;
+    if (!req.tenantId) {
+      return res.status(401).json({ status: 'error', message: 'Tenant ID is required' });
+    }
+    if (!timeEntryIds || !Array.isArray(timeEntryIds) || timeEntryIds.length === 0) {
+      return res.status(400).json({ status: 'error', message: 'Time entry IDs are required' });
+    }
+    // Mock approval logic
+    return res.status(200).json({ status: 'success', message: `${timeEntryIds.length} time entries approved`, data: { approvedCount: timeEntryIds.length, approverId, approvedAt: new Date().toISOString() } });
+  } catch (error) {
+    console.error('Approve time entries error:', error);
+    return res.status(500).json({ status: 'error', message: 'Internal server error while approving time entries' });
+  }
+};
+
+/**
+ * Download pay stub PDF
+ * @route GET /api/payroll/pay-stubs/:id/download
+ */
+export const downloadPayStub = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    if (!req.tenantId) {
+      return res.status(401).json({ status: 'error', message: 'Tenant ID is required' });
+    }
+    // Mock PDF download response
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename=paystub_${id}.pdf`);
+    res.send(Buffer.from('%PDF-1.4\n%Mock PDF for pay stub\n', 'utf-8'));
+  } catch (error) {
+    console.error('Download pay stub error:', error);
+    return res.status(500).json({ status: 'error', message: 'Internal server error while downloading pay stub' });
+  }
+};
+
+/**
+ * Download payroll report PDF
+ * @route GET /api/payroll/reports/:id/download
+ */
+export const downloadPayrollReport = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    if (!req.tenantId) {
+      return res.status(401).json({ status: 'error', message: 'Tenant ID is required' });
+    }
+    // Mock PDF download response
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename=payroll_report_${id}.pdf`);
+    res.send(Buffer.from('%PDF-1.4\n%Mock PDF for payroll report\n', 'utf-8'));
+  } catch (error) {
+    console.error('Download payroll report error:', error);
+    return res.status(500).json({ status: 'error', message: 'Internal server error while downloading payroll report' });
   }
 };

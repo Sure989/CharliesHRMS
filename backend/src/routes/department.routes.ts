@@ -6,6 +6,7 @@ import {
   updateDepartment,
   deleteDepartment,
   getDepartmentEmployees,
+  getDepartmentStats,
 } from '../controllers/department.controller';
 import { authenticate, restrictTo } from '../middleware/auth.middleware';
 
@@ -55,5 +56,12 @@ router.delete('/:id', restrictTo(['ADMIN']), deleteDepartment);
  * @access Private (All authenticated users)
  */
 router.get('/:id/employees', getDepartmentEmployees);
+
+/**
+ * @route GET /api/departments/:id/stats
+ * @desc Get statistics for a specific department
+ * @access Private (All authenticated users)
+ */
+router.get('/:id/stats', getDepartmentStats);
 
 export default router;

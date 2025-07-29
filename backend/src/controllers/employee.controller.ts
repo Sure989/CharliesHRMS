@@ -1,3 +1,9 @@
+import { Request, Response } from 'express';
+import bcrypt from 'bcrypt';
+import prisma from '../lib/prisma';
+import { employeeService } from '../services/configuredServices';
+import config from '../config/config';
+
 /**
  * Get an employee by employeeNumber (business ID)
  * @route GET /api/employees/by-employee-id/:employeeId
@@ -39,8 +45,6 @@ export const getEmployeeByEmployeeNumber = async (req: Request, res: Response) =
     });
   }
 };
-import { Request, Response } from 'express';
-import prisma from '../lib/prisma';
 
 /**
  * Get all employees for a tenant
@@ -220,46 +224,86 @@ export const createEmployee = async (req: Request, res: Response) => {
       });
     }
 
-    // Generate next sequential employeeNumber (EMP###)
+    // Generate next sequential employeeNumber using configured service
     const lastEmployee = await prisma.employee.findFirst({
       orderBy: { employeeNumber: 'desc' },
       select: { employeeNumber: true }
     });
-    let nextNumber = 1;
+    let nextNumber = 0;
     if (lastEmployee && lastEmployee.employeeNumber) {
-      const lastNum = parseInt(lastEmployee.employeeNumber.replace('EMP', ''), 10);
-      nextNumber = lastNum + 1;
+      const prefix = employeeService.getDefaultDepartmentName().substring(0, 3).toUpperCase();
+      const lastNum = parseInt(lastEmployee.employeeNumber.replace(prefix, ''), 10);
+      nextNumber = lastNum;
     }
-    const nextEmployeeNumber = `EMP${String(nextNumber).padStart(3, '0')}`;
+    const nextEmployeeNumber = employeeService.generateEmployeeNumber(nextNumber);
+
+    // Generate a temporary password for the new user
+    const tempPassword = Math.random().toString(36).substring(2, 15) + 
+                        Math.random().toString(36).substring(2, 15);
+    const passwordHash = await bcrypt.hash(tempPassword, 12);
 
     const employee = await prisma.employee.create({
-          data: {
-            employeeNumber: nextEmployeeNumber,
+      data: {
+        employeeNumber: nextEmployeeNumber,
+        firstName,
+        lastName,
+        email,
+        phone,
+        address,
+        position,
+        departmentId,
+        branchId,
+        salary,
+        hireDate: new Date(hireDate),
+        status: employeeService.getDefaultEmployeeStatus(),
+        tenantId: req.tenantId,
+        user: {
+          create: {
+            email,
             firstName,
             lastName,
-            email,
-            phone,
-            address,
-            position,
-            departmentId,
-            branchId,
-            salary,
-            hireDate: new Date(hireDate),
-            status: 'ACTIVE',
+            role: 'EMPLOYEE',
             tenantId: req.tenantId,
-            user: {
-              create: {
-                email,
-                firstName,
-                lastName,
-                role: 'EMPLOYEE',
-                tenantId: req.tenantId,
-                passwordHash: ""
-              }
-            }
-          },
-          include: { user: true }
-        });
+            passwordHash,
+          }
+        }
+      },
+      include: { 
+        user: true,
+        department: { select: { name: true } },
+        branch: { select: { name: true } }
+      }
+    });
+
+    // Generate welcome token for password setup
+    const welcomeToken = Math.random().toString(36).substring(2, 15) + 
+                        Math.random().toString(36).substring(2, 15);
+    const welcomeExpires = new Date();
+    welcomeExpires.setDate(welcomeExpires.getDate() + 7); // 7 days to set password
+
+    // Store welcome token in audit log
+    await prisma.auditLog.create({
+      data: {
+        tenantId: req.tenantId,
+        userId: employee.user?.id,
+        action: 'EMPLOYEE_WELCOME_SENT',
+        entity: 'EMPLOYEE',
+        entityId: employee.id,
+        details: {
+          welcomeToken,
+          welcomeExpires: welcomeExpires.toISOString(),
+          email: employee.email,
+          employeeNumber: employee.employeeNumber,
+          tempPassword, // Remove in production
+        },
+      },
+    });
+
+    // In production, send welcome email here
+    console.log(`Welcome email for ${employee.email}:`);
+    console.log(`Employee Number: ${employee.employeeNumber}`);
+    console.log(`Temporary Password: ${tempPassword}`);
+    console.log(`Welcome Link: ${config.frontendUrl}/welcome?token=${welcomeToken}`);
 
     return res.status(201).json({
       status: 'success',
@@ -659,16 +703,16 @@ export const importEmployees = async (req: Request, res: Response) => {
             departmentId = department.id;
           }
 
-          // If no department specified, create/get default department
+          // If no department specified, create/get default department using configured service
           if (!departmentId) {
             let defaultDept = await prisma.department.findFirst({
-              where: { name: 'General', tenantId: req.tenantId }
+              where: { name: employeeService.getDefaultDepartmentName(), tenantId: req.tenantId }
             });
             if (!defaultDept) {
               defaultDept = await prisma.department.create({
                 data: {
-                  name: 'General',
-                  description: 'Default department for imported employees',
+                  name: employeeService.getDefaultDepartmentName(),
+                  description: employeeService.getDefaultDepartmentDescription(),
                   tenantId: req.tenantId,
                 }
               });
@@ -689,13 +733,13 @@ export const importEmployees = async (req: Request, res: Response) => {
               if (!defaultDepartmentId) {
                 // Get or create a default department
                 let defaultDept = await prisma.department.findFirst({
-                  where: { name: 'General', tenantId: req.tenantId }
+                  where: { name: employeeService.getDefaultDepartmentName(), tenantId: req.tenantId }
                 });
                 if (!defaultDept) {
                   defaultDept = await prisma.department.create({
                     data: {
-                      name: 'General',
-                      description: 'Default department for imported employees',
+                      name: employeeService.getDefaultDepartmentName(),
+                      description: employeeService.getDefaultDepartmentDescription(),
                       tenantId: req.tenantId,
                     }
                   });
@@ -725,7 +769,7 @@ export const importEmployees = async (req: Request, res: Response) => {
               phone: employee.phone || null,
               position: employee.position || null,
               hireDate: employee.hireDate ? new Date(employee.hireDate) : new Date(),
-              status: 'active',
+              status: employeeService.getDefaultEmployeeStatus(),
               tenantId: req.tenantId,
               departmentId: departmentId!, // We ensure this is always set above
               branchId: branchId || undefined,

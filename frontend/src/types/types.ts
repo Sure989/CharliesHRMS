@@ -407,6 +407,54 @@ export interface SalaryAdvanceRequest {
   workflowHistory: WorkflowStep[];
 }
 
+export interface Training {
+  id: string;
+  title: string;
+  description?: string;
+  startDate: string;
+  endDate: string;
+  status: 'upcoming' | 'ongoing' | 'completed' | 'cancelled';
+  capacity?: number;
+  instructor?: string;
+  venue?: string;
+  requirements?: string[];
+  certification?: boolean;
+  cost?: number;
+  category?: string;
+  tenantId: string;
+  createdAt: string;
+  updatedAt: string;
+  enrollments: TrainingEnrollment[];
+  enrolled: number;
+}
+
+export interface TrainingEnrollment {
+  id: string;
+  trainingId: string;
+  employeeId: string;
+  status: 'enrolled' | 'in_progress' | 'completed' | 'failed' | 'withdrawn';
+  progress?: number;
+  score?: number;
+  certificateIssued?: boolean;
+  completionDate?: string;
+  createdAt: string;
+  updatedAt: string;
+  employeeName: string;
+  employeeEmail: string;
+  position?: string;
+  department?: string;
+  branch?: string;
+  employee: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    position?: string;
+    department?: { name: string };
+    branch?: { name: string };
+  };
+}
+
 export function getUserPermissions(role: string): string[] {
   if (role === 'ADMIN') {
     // Admins implicitly have all permissions, or we can explicitly list them all

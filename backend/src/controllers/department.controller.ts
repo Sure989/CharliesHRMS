@@ -1,3 +1,60 @@
+/**
+ * Get statistics for a specific department
+ * @route GET /api/departments/:id/stats
+ */
+export const getDepartmentStats = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    if (!req.tenantId) {
+      return res.status(401).json({
+        status: 'error',
+        message: 'Tenant ID is required',
+      });
+    }
+
+    // Get department info
+    const department = await prisma.department.findFirst({
+      where: { id, tenantId: req.tenantId },
+      include: {
+        employees: true
+      }
+    });
+    if (!department) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'Department not found',
+      });
+    }
+
+    // Calculate stats
+    const employeeCount = department.employees.length;
+    const totalGrossPay = department.employees.reduce((sum, emp) => sum + (emp.grossPay || 0), 0);
+    const averageSalary = employeeCount > 0 ? totalGrossPay / employeeCount : 0;
+    const status = department.status;
+
+    // You can add more stats here as needed
+
+    return res.status(200).json({
+      status: 'success',
+      data: {
+        departmentId: department.id,
+        name: department.name,
+        employeeCount,
+        totalGrossPay,
+        averageSalary,
+        status,
+        createdAt: department.createdAt,
+        updatedAt: department.updatedAt
+      }
+    });
+  } catch (error) {
+    console.error('Get department stats error:', error);
+    return res.status(500).json({
+      status: 'error',
+      message: 'Internal server error while fetching department stats',
+    });
+  }
+};
 import { Request, Response } from 'express';
 import prisma from '../lib/prisma';
 

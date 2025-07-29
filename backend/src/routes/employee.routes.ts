@@ -151,6 +151,8 @@ router.post('/import', restrictTo(['ADMIN', 'HR_MANAGER']), upload.single('file'
  * @desc Export employee data to CSV
  * @access Private (Admin, HR Manager)
  */
+router.post('/:id/profile-picture', restrictTo(['ADMIN', 'HR_MANAGER']), upload.single('file'), updateEmployee);
+router.post('/:id/profile-picture', restrictTo(['ADMIN', 'HR_MANAGER']), upload.single('file'), updateEmployee);
 router.get('/export', restrictTo(['ADMIN', 'HR_MANAGER']), exportEmployees);
 
 /**

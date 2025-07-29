@@ -2,10 +2,23 @@ import { Router } from 'express';
 import {
   getLeaveTypes,
   createLeaveType,
-  submitLeaveRequest,
-  getLeaveRequests,
-  processLeaveRequest,
+  updateLeaveType,
+  deleteLeaveType,
   getLeaveBalances,
+  updateLeaveBalance,
+  getLeaveRequests,
+  getLeaveRequestById,
+  submitLeaveRequest,
+  updateLeaveRequest,
+  cancelLeaveRequest,
+  processLeaveRequest,
+  bulkApproveLeaveRequests,
+  getLeaveCalendar,
+  getLeaveStatistics,
+  exportLeaveData,
+  getPendingApprovals,
+  checkLeaveConflicts,
+  getLeavePolicy,
   getHolidays,
   createHoliday,
 } from '../controllers/leave.controller';
@@ -29,6 +42,8 @@ router.get('/types', getLeaveTypes);
  * @access Private (Admin, HR Manager)
  */
 router.post('/types', restrictTo(['ADMIN', 'HR_MANAGER']), createLeaveType);
+router.put('/types/:id', restrictTo(['ADMIN', 'HR_MANAGER']), updateLeaveType);
+router.delete('/types/:id', restrictTo(['ADMIN', 'HR_MANAGER']), deleteLeaveType);
 
 /**
  * @route POST /api/leave/requests
@@ -43,6 +58,10 @@ router.post('/requests', submitLeaveRequest);
  * @access Private (Admin, HR Manager, Operations Manager can see all; Employees see their own)
  */
 router.get('/requests', getLeaveRequests);
+router.get('/requests/:id', getLeaveRequestById);
+router.put('/requests/:id', restrictTo(['ADMIN', 'HR_MANAGER']), updateLeaveRequest);
+router.patch('/requests/:id/cancel', cancelLeaveRequest);
+router.post('/requests/bulk-approve', restrictTo(['ADMIN', 'HR_MANAGER']), bulkApproveLeaveRequests);
 
 /**
  * @route PUT /api/leave/requests/:id/decision
@@ -56,7 +75,8 @@ router.put('/requests/:id/decision', restrictTo(['ADMIN', 'HR_MANAGER', 'OPERATI
  * @desc Get leave balances for an employee
  * @access Private (All authenticated users - with employee access control in controller)
  */
-router.get('/balances/:employeeId', getLeaveBalances);
+router.get('/balances', getLeaveBalances);
+router.put('/balances/:id', restrictTo(['ADMIN', 'HR_MANAGER']), updateLeaveBalance);
 
 /**
  * @route GET /api/leave/holidays
@@ -71,5 +91,12 @@ router.get('/holidays', getHolidays);
  * @access Private (Admin, HR Manager)
  */
 router.post('/holidays', restrictTo(['ADMIN', 'HR_MANAGER']), createHoliday);
+
+router.get('/calendar', getLeaveCalendar);
+router.get('/statistics', getLeaveStatistics);
+router.get('/export', exportLeaveData);
+router.get('/pending-approvals/:managerId', getPendingApprovals);
+router.post('/check-conflicts', checkLeaveConflicts);
+router.get('/policy', getLeavePolicy);
 
 export default router;

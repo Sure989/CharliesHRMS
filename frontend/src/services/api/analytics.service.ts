@@ -348,7 +348,17 @@ class AnalyticsService {
     };
   }> {
     try {
-      // Get performance reviews data
+      // Try analytics endpoint first, fallback to performance-reviews
+      try {
+        const analyticsResponse = await apiClient.get<any>('/analytics/performance-reviews');
+        if (analyticsResponse.status === 'success' && analyticsResponse.data) {
+          return analyticsResponse.data;
+        }
+      } catch (analyticsError) {
+        console.log('Analytics endpoint failed, falling back to performance-reviews');
+      }
+      
+      // Fallback: Get performance reviews data directly
       const reviewsResponse = await apiClient.get<{ reviews: any[] }>('/performance-reviews');
       
       if (reviewsResponse.status === 'success' && reviewsResponse.data?.reviews) {

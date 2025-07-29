@@ -6,6 +6,7 @@ import {
   updateBranch,
   deleteBranch,
   getBranchEmployees,
+  getBranchStats,
 } from '../controllers/branch.controller';
 import { authenticate, restrictTo } from '../middleware/auth.middleware';
 
@@ -55,5 +56,12 @@ router.delete('/:id', restrictTo(['ADMIN']), deleteBranch);
  * @access Private (All authenticated users)
  */
 router.get('/:id/employees', getBranchEmployees);
+
+/**
+ * @route GET /api/branches/:id/stats
+ * @desc Get statistics for a specific branch
+ * @access Private (All authenticated users)
+ */
+router.get('/:id/stats', getBranchStats);
 
 export default router;

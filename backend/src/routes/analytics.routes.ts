@@ -7,6 +7,7 @@ import {
   getPerformance,
   getTraining,
   getCustomAnalytics,
+  getCustomReports,
   getSummary,
   exportAnalytics,
   getOvertimeAnalytics,
@@ -15,6 +16,9 @@ import {
   getRealTimeMetrics,
   getAuditTrail,
   getSalaryAdvanceAnalytics,
+  scheduleReport,
+  getSystemAlerts,
+  markAlertAsRead,
 } from '../controllers/analytics.controller';
 import { authenticate, restrictTo } from '../middleware/auth.middleware';
 
@@ -63,7 +67,7 @@ router.get('/leave', restrictTo(['ADMIN', 'HR_MANAGER', 'OPERATIONS_MANAGER']), 
  * @desc Get performance analytics
  * @access Private (Admin, HR Manager, Operations Manager)
  */
-router.get('/performance', restrictTo(['ADMIN', 'HR_MANAGER', 'OPERATIONS_MANAGER']), getPerformance);
+router.get('/performance-reviews', restrictTo(['ADMIN', 'HR_MANAGER', 'OPERATIONS_MANAGER']), getPerformance);
 
 /**
  * @route GET /api/analytics/training
@@ -77,7 +81,11 @@ router.get('/training', restrictTo(['ADMIN', 'HR_MANAGER', 'OPERATIONS_MANAGER']
  * @desc Generate custom analytics
  * @access Private (Admin only)
  */
-router.post('/custom', restrictTo(['ADMIN']), getCustomAnalytics);
+router.post('/reports/generate', restrictTo(['ADMIN']), getCustomAnalytics);
+router.get('/reports', restrictTo(['ADMIN']), getCustomReports);
+router.post('/reports/:reportId/schedule', restrictTo(['ADMIN']), scheduleReport);
+router.get('/alerts', restrictTo(['ADMIN']), getSystemAlerts);
+router.patch('/alerts/:alertId/read', restrictTo(['ADMIN']), markAlertAsRead);
 
 /**
  * @route POST /api/analytics/export

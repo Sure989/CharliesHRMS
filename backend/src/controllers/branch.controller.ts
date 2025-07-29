@@ -374,3 +374,7 @@ export const getBranchEmployees = async (req: Request, res: Response) => {
     });
   }
 };
+
+export const getBranchStats = async (req: Request, res: Response) => {
+  res.status(501).json({ message: 'Not implemented' });
+};

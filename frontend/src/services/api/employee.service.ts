@@ -81,6 +81,117 @@ export interface EmployeeFilters {
 
 class EmployeeService {
   /**
+   * Helper method to map status from backend to frontend format
+   */
+  private mapStatusFromBackend(status: string): Employee['status'] {
+    const statusMap: Record<string, Employee['status']> = {
+      'ACTIVE': 'active',
+      'INACTIVE': 'inactive',
+      'TERMINATED': 'terminated'
+    };
+    return statusMap[status?.toUpperCase()] || status?.toLowerCase() as Employee['status'];
+  }
+
+  /**
+   * Helper method to map status from frontend to backend format
+   */
+  private mapStatusToBackend(status: Employee['status']): string {
+    const statusMap: Record<Employee['status'], string> = {
+      'active': 'ACTIVE',
+      'inactive': 'INACTIVE',
+      'terminated': 'TERMINATED'
+    };
+    return statusMap[status] || status?.toUpperCase();
+  }
+
+  /**
+   * Helper method to transform backend employee data to frontend format
+   */
+  private transformEmployeeFromBackend(emp: any): Employee {
+    return {
+      id: emp.id,
+      employeeId: emp.employeeNumber || emp.employeeId, // Handle both field names
+      firstName: emp.firstName,
+      lastName: emp.lastName,
+      email: emp.email,
+      phone: emp.phone,
+      position: emp.position,
+      department: typeof emp.department === 'object' ? emp.department?.name || '' : emp.department || '',
+      branch: typeof emp.branch === 'object' ? emp.branch?.name || '' : emp.branch || '',
+      hireDate: emp.hireDate,
+      status: this.mapStatusFromBackend(emp.status),
+      salary: emp.salary,
+      manager: emp.manager,
+      profilePicture: emp.profilePicture,
+      address: emp.address,
+      emergencyContact: emp.emergencyContact,
+      bankDetails: emp.bankDetails,
+      taxInfo: emp.taxInfo,
+      createdAt: emp.createdAt,
+      updatedAt: emp.updatedAt
+    };
+  }
+
+  /**
+   * Helper method to transform frontend employee data to backend format
+   */
+  private transformEmployeeToBackend(employeeData: CreateEmployeeRequest | UpdateEmployeeRequest): any {
+    const backendData: any = {
+      firstName: employeeData.firstName,
+      lastName: employeeData.lastName,
+      email: employeeData.email,
+      phone: employeeData.phone,
+      position: employeeData.position,
+      hireDate: employeeData.hireDate,
+      salary: employeeData.salary,
+      manager: employeeData.manager,
+      address: employeeData.address,
+      emergencyContact: employeeData.emergencyContact,
+      bankDetails: employeeData.bankDetails,
+      taxInfo: employeeData.taxInfo
+    };
+
+    // Handle employeeId/employeeNumber mapping
+    if ('employeeId' in employeeData && employeeData.employeeId) {
+      backendData.employeeNumber = employeeData.employeeId;
+    } else if ('firstName' in employeeData && 'lastName' in employeeData) {
+      // Generate employeeNumber if not provided (for create operations)
+      backendData.employeeNumber = employeeData.firstName.substring(0, 1) + 
+                                   employeeData.lastName.substring(0, 1) + 
+                                   Date.now().toString().substring(8);
+    }
+
+    // Handle department and branch - assume they are IDs if provided
+    if (employeeData.department) {
+      backendData.departmentId = employeeData.department;
+    }
+    if (employeeData.branch) {
+      backendData.branchId = employeeData.branch;
+    }
+
+    // Handle status mapping for update operations
+    if ('status' in employeeData && employeeData.status) {
+      backendData.status = this.mapStatusToBackend(employeeData.status);
+    }
+
+    // Remove undefined values
+    Object.keys(backendData).forEach(key => {
+      if (backendData[key] === undefined) {
+        delete backendData[key];
+      }
+    });
+
+    return backendData;
+  }
+
+  /**
+   * Get all employees with optional filters (backward compatibility)
+   */
+  async getAll(filters?: EmployeeFilters): Promise<PaginatedResponse<Employee>> {
+    return this.getEmployees(filters);
+  }
+
+  /**
    * Get all employees with optional filters
    */
   async getEmployees(filters?: EmployeeFilters): Promise<PaginatedResponse<Employee>> {
@@ -90,7 +201,12 @@ class EmployeeService {
       if (filters) {
         Object.entries(filters).forEach(([key, value]) => {
           if (value !== undefined && value !== null) {
-            params.append(key, value.toString());
+            // Map frontend status to backend status for filtering
+            if (key === 'status' && typeof value === 'string') {
+              params.append(key, this.mapStatusToBackend(value as Employee['status']));
+            } else {
+              params.append(key, value.toString());
+            }
           }
         });
       }
@@ -98,12 +214,9 @@ class EmployeeService {
       const response = await apiClient.get<{employees: any[]}>(`/employees?${params.toString()}`);
       
       if (response.status === 'success' && response.data && response.data.employees) {
-        // Map department and branch to names for each employee
-        const employees = response.data.employees.map(emp => ({
-          ...emp,
-          department: typeof emp.department === 'object' ? emp.department?.name || '' : emp.department || '',
-          branch: typeof emp.branch === 'object' ? emp.branch?.name || '' : emp.branch || '',
-        }));
+        // Transform all employees from backend format
+        const employees = response.data.employees.map(emp => this.transformEmployeeFromBackend(emp));
+        
         const paginatedResponse: PaginatedResponse<Employee> = {
           ...response,
           data: employees
@@ -126,25 +239,7 @@ class EmployeeService {
       const response = await apiClient.get<{employee: any}>(`/employees/${id}`);
       
       if (response.status === 'success' && response.data && response.data.employee) {
-        const emp = response.data.employee;
-        // Map backend response to frontend format
-        return {
-          id: emp.id,
-          employeeId: emp.employeeNumber, // Map employeeNumber to employeeId
-          firstName: emp.firstName,
-          lastName: emp.lastName,
-          email: emp.email,
-          phone: emp.phone,
-          position: emp.position,
-          department: typeof emp.department === 'object' ? emp.department?.name || '' : emp.department || '',
-          branch: typeof emp.branch === 'object' ? emp.branch?.name || '' : emp.branch || '',
-          hireDate: emp.hireDate,
-          status: emp.status === 'ACTIVE' ? 'active' : emp.status === 'INACTIVE' ? 'inactive' : emp.status,
-          salary: emp.salary,
-          address: emp.address,
-          createdAt: emp.createdAt,
-          updatedAt: emp.updatedAt
-        } as Employee;
+        return this.transformEmployeeFromBackend(response.data.employee);
       }
       
       throw new Error(response.message || 'Failed to get employee');
@@ -162,25 +257,7 @@ class EmployeeService {
       const response = await apiClient.get<{employee: any}>(`/employees/by-employee-id/${employeeId}`);
       
       if (response.status === 'success' && response.data && response.data.employee) {
-        const emp = response.data.employee;
-        // Map backend response to frontend format
-        return {
-          id: emp.id,
-          employeeId: emp.employeeNumber, // Map employeeNumber to employeeId
-          firstName: emp.firstName,
-          lastName: emp.lastName,
-          email: emp.email,
-          phone: emp.phone,
-          position: emp.position,
-          department: typeof emp.department === 'object' ? emp.department?.name || '' : emp.department || '',
-          branch: typeof emp.branch === 'object' ? emp.branch?.name || '' : emp.branch || '',
-          hireDate: emp.hireDate,
-          status: emp.status === 'ACTIVE' ? 'active' : emp.status === 'INACTIVE' ? 'inactive' : emp.status,
-          salary: emp.salary,
-          address: emp.address,
-          createdAt: emp.createdAt,
-          updatedAt: emp.updatedAt
-        } as Employee;
+        return this.transformEmployeeFromBackend(response.data.employee);
       }
       
       throw new Error(response.message || 'Failed to get employee');
@@ -195,42 +272,11 @@ class EmployeeService {
    */
   async createEmployee(employeeData: CreateEmployeeRequest): Promise<Employee> {
     try {
-      // Convert frontend data to backend format
-      const backendData = {
-        employeeNumber: employeeData.employeeId || employeeData.firstName.substring(0, 1) + employeeData.lastName.substring(0, 1) + Date.now().toString().substring(8),
-        firstName: employeeData.firstName,
-        lastName: employeeData.lastName,
-        email: employeeData.email,
-        phone: employeeData.phone,
-        position: employeeData.position,
-        departmentId: employeeData.department, // Backend expects departmentId, not department name
-        branchId: employeeData.branch, // Backend expects branchId, not branch name
-        hireDate: employeeData.hireDate,
-        salary: employeeData.salary,
-        address: employeeData.address
-      };
-      
+      const backendData = this.transformEmployeeToBackend(employeeData);
       const response = await apiClient.post<{employee: any}>('/employees', backendData);
       
       if (response.status === 'success' && response.data && response.data.employee) {
-        const emp = response.data.employee;
-        // Convert backend response to frontend format
-        return {
-          id: emp.id,
-          employeeId: emp.employeeNumber,
-          firstName: emp.firstName,
-          lastName: emp.lastName,
-          email: emp.email,
-          phone: emp.phone,
-          position: emp.position,
-          department: typeof emp.department === 'object' ? emp.department?.name || '' : emp.department || '',
-          branch: typeof emp.branch === 'object' ? emp.branch?.name || '' : emp.branch || '',
-          hireDate: emp.hireDate,
-          status: emp.status === 'ACTIVE' ? 'active' : emp.status === 'INACTIVE' ? 'inactive' : emp.status,
-          salary: emp.salary,
-          createdAt: emp.createdAt,
-          updatedAt: emp.updatedAt
-        } as Employee;
+        return this.transformEmployeeFromBackend(response.data.employee);
       }
       
       throw new Error(response.message || 'Failed to create employee');
@@ -245,10 +291,11 @@ class EmployeeService {
    */
   async updateEmployee(id: string, employeeData: UpdateEmployeeRequest): Promise<Employee> {
     try {
-      const response = await apiClient.put<{employee: Employee}>(`/employees/${id}`, employeeData);
+      const backendData = this.transformEmployeeToBackend(employeeData);
+      const response = await apiClient.put<{employee: any}>(`/employees/${id}`, backendData);
       
       if (response.status === 'success' && response.data && response.data.employee) {
-        return response.data.employee;
+        return this.transformEmployeeFromBackend(response.data.employee);
       }
       
       throw new Error(response.message || 'Failed to update employee');
@@ -279,10 +326,10 @@ class EmployeeService {
    */
   async activateEmployee(id: string): Promise<Employee> {
     try {
-      const response = await apiClient.patch<{employee: Employee}>(`/employees/${id}/activate`);
+      const response = await apiClient.patch<{employee: any}>(`/employees/${id}/activate`);
       
       if (response.status === 'success' && response.data && response.data.employee) {
-        return response.data.employee;
+        return this.transformEmployeeFromBackend(response.data.employee);
       }
       
       throw new Error(response.message || 'Failed to activate employee');
@@ -297,10 +344,10 @@ class EmployeeService {
    */
   async deactivateEmployee(id: string): Promise<Employee> {
     try {
-      const response = await apiClient.patch<{employee: Employee}>(`/employees/${id}/deactivate`);
+      const response = await apiClient.patch<{employee: any}>(`/employees/${id}/deactivate`);
       
       if (response.status === 'success' && response.data && response.data.employee) {
-        return response.data.employee;
+        return this.transformEmployeeFromBackend(response.data.employee);
       }
       
       throw new Error(response.message || 'Failed to deactivate employee');
@@ -315,10 +362,10 @@ class EmployeeService {
    */
   async getEmployeesByDepartment(department: string): Promise<Employee[]> {
     try {
-      const response = await apiClient.get<{employees: Employee[]}>(`/employees/department/${department}`);
+      const response = await apiClient.get<{employees: any[]}>(`/employees/department/${department}`);
       
       if (response.status === 'success' && response.data && response.data.employees) {
-        return response.data.employees;
+        return response.data.employees.map(emp => this.transformEmployeeFromBackend(emp));
       }
       
       throw new Error(response.message || 'Failed to get employees by department');
@@ -333,10 +380,10 @@ class EmployeeService {
    */
   async getEmployeesByBranch(branch: string): Promise<Employee[]> {
     try {
-      const response = await apiClient.get<{employees: Employee[]}>(`/employees/branch/${branch}`);
+      const response = await apiClient.get<{employees: any[]}>(`/employees/branch/${branch}`);
       
       if (response.status === 'success' && response.data && response.data.employees) {
-        return response.data.employees;
+        return response.data.employees.map(emp => this.transformEmployeeFromBackend(emp));
       }
       
       throw new Error(response.message || 'Failed to get employees by branch');
@@ -351,10 +398,10 @@ class EmployeeService {
    */
   async getEmployeesByManager(managerId: string): Promise<Employee[]> {
     try {
-      const response = await apiClient.get<{employees: Employee[]}>(`/employees/manager/${managerId}`);
+      const response = await apiClient.get<{employees: any[]}>(`/employees/manager/${managerId}`);
       
       if (response.status === 'success' && response.data && response.data.employees) {
-        return response.data.employees;
+        return response.data.employees.map(emp => this.transformEmployeeFromBackend(emp));
       }
       
       throw new Error(response.message || 'Failed to get employees by manager');
@@ -369,10 +416,10 @@ class EmployeeService {
    */
   async searchEmployees(query: string): Promise<Employee[]> {
     try {
-      const response = await apiClient.get<{employees: Employee[]}>(`/employees/search?q=${encodeURIComponent(query)}`);
+      const response = await apiClient.get<{employees: any[]}>(`/employees/search?q=${encodeURIComponent(query)}`);
       
       if (response.status === 'success' && response.data && response.data.employees) {
-        return response.data.employees;
+        return response.data.employees.map(emp => this.transformEmployeeFromBackend(emp));
       }
       
       throw new Error(response.message || 'Failed to search employees');
@@ -387,10 +434,10 @@ class EmployeeService {
    */
   async uploadProfilePicture(id: string, file: File): Promise<Employee> {
     try {
-      const response = await apiClient.uploadFile<{employee: Employee}>(`/employees/${id}/profile-picture`, file);
+      const response = await apiClient.uploadFile<{employee: any}>(`/employees/${id}/profile-picture`, file);
       
       if (response.status === 'success' && response.data && response.data.employee) {
-        return response.data.employee;
+        return this.transformEmployeeFromBackend(response.data.employee);
       }
       
       throw new Error(response.message || 'Failed to upload profile picture');
@@ -436,7 +483,12 @@ class EmployeeService {
       if (filters) {
         Object.entries(filters).forEach(([key, value]) => {
           if (value !== undefined && value !== null) {
-            params.append(key, value.toString());
+            // Map frontend status to backend status for filtering
+            if (key === 'status' && typeof value === 'string') {
+              params.append(key, this.mapStatusToBackend(value as Employee['status']));
+            } else {
+              params.append(key, value.toString());
+            }
           }
         });
       }

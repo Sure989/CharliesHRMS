@@ -23,8 +23,13 @@ import {
   getPayrollRecords,
   getPayrollRecordById,
   approvePayrollRecords,
-  // Removed unused import: processPayrollForPeriod
   updatePayrollPeriod,
+  // Added missing controller imports
+  deletePayrollPeriod,
+  calculatePayroll,
+  approveTimeEntries,
+  downloadPayStub,
+  downloadPayrollReport,
 } from '../controllers/payroll.controller';
 import { authenticate, restrictTo } from '../middleware/auth.middleware';
 
@@ -41,6 +46,7 @@ router.use(authenticate);
  * @access Private (Admin, HR Manager)
  */
 router.put('/periods/:id', restrictTo(['ADMIN', 'HR_MANAGER']), updatePayrollPeriod);
+router.delete('/periods/:id', restrictTo(['ADMIN', 'HR_MANAGER']), deletePayrollPeriod);
 
 /**
  * @route GET /api/payroll/periods
@@ -69,6 +75,7 @@ router.get('/periods/:periodId/payrolls', restrictTo(['ADMIN', 'HR_MANAGER', 'OP
  * @access Private (Admin, HR Manager)
  */
 router.post('/process', restrictTo(['ADMIN', 'HR_MANAGER']), processPayroll);
+router.post('/calculate', restrictTo(['ADMIN', 'HR_MANAGER']), calculatePayroll);
 
 /**
  * @route POST /api/payroll/periods/:periodId/process-all
@@ -208,5 +215,40 @@ router.get('/employees', restrictTo(['ADMIN', 'HR_MANAGER', 'OPERATIONS_MANAGER'
  * @access Private (Admin, HR Manager)
  */
 router.delete('/:employeeId/:periodId', restrictTo(['ADMIN', 'HR_MANAGER']), require('../controllers/payroll.controller').deletePayrollForEmployeePeriod);
+
+/**
+ * @route DELETE /api/payroll/periods/:id
+ * @desc Delete a payroll period
+ * @access Private (Admin, HR Manager)
+ */
+router.delete('/periods/:id', restrictTo(['ADMIN', 'HR_MANAGER']), deletePayrollPeriod);
+
+/**
+ * @route POST /api/payroll/calculate
+ * @desc Calculate payroll (preview, simulation)
+ * @access Private (Admin, HR Manager)
+ */
+router.post('/calculate', restrictTo(['ADMIN', 'HR_MANAGER']), calculatePayroll);
+
+/**
+ * @route POST /api/payroll/time-entries/approve
+ * @desc Approve time entries
+ * @access Private (Admin, HR Manager)
+ */
+router.post('/time-entries/approve', restrictTo(['ADMIN', 'HR_MANAGER']), approveTimeEntries);
+
+/**
+ * @route GET /api/payroll/pay-stubs/:id/download
+ * @desc Download pay stub PDF
+ * @access Private (All authenticated users)
+ */
+router.get('/pay-stubs/:id/download', downloadPayStub);
+
+/**
+ * @route GET /api/payroll/reports/:id/download
+ * @desc Download payroll report PDF
+ * @access Private (Admin, HR Manager, Operations Manager)
+ */
+router.get('/reports/:id/download', restrictTo(['ADMIN', 'HR_MANAGER', 'OPERATIONS_MANAGER']), downloadPayrollReport);
 
 export default router;
