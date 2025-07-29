@@ -13,12 +13,7 @@ const app = express();
 const allowedOrigins = process.env.CORS_ORIGIN
   ? process.env.CORS_ORIGIN.split(',')
   : [
-      'https://charlies-hrms-frontend.vercel.app',
-      'https://charlies-hrms-frontend-pu9plfynm-sures-projects-4f526083.vercel.app',
-      'http://localhost:4000',
-      'http://localhost:3000',
-      'http://localhost:5173',
-      'https://localhost:4000'
+      'https://charlies-hrms-frontend.vercel.app'
     ];
 
 app.use(cors({

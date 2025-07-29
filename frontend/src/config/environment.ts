@@ -1,7 +1,7 @@
 // Environment configuration for the frontend application
 export const config = {
   // API Configuration
-  apiBaseUrl: import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api',
+  apiBaseUrl: 'https://chalies-hrms-backend.vercel.app/api',
   
   // App Configuration
   appName: import.meta.env.VITE_APP_NAME || "Charlie's HRMS",
@@ -9,7 +9,7 @@ export const config = {
   nodeEnv: import.meta.env.VITE_NODE_ENV || 'development',
   
   // Authentication
-  jwtSecret: import.meta.env.VITE_JWT_SECRET || 'default-secret',
+  jwtSecret: import.meta.env.VITE_JWT_SECRET,
   tokenExpiry: import.meta.env.VITE_TOKEN_EXPIRY || '24h',
   
   // Feature Flags
