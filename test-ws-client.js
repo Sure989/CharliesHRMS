@@ -1,7 +1,7 @@
 // Simple Node.js WebSocket client to test backend connection
 const WebSocket = require('ws');
 
-const ws = new WebSocket('wss://chalies-hrms-backend.vercel.app/dashboard-metrics?role=admin');
+const ws = new WebSocket('wss://charlies-hrms-backend.vercel.app/dashboard-metrics?role=admin');
 
 ws.on('open', function open() {
   // ...existing code...

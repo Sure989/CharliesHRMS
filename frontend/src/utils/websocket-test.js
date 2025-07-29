@@ -1,6 +1,6 @@
 // Simple WebSocket test - run this in browser console
 const testWebSocket = () => {
-  const ws = new WebSocket((import.meta.env ? import.meta.env.VITE_WS_BASE_URL : 'wss://chalies-hrms-backend.vercel.app') + '/dashboard-metrics?role=admin');
+  const ws = new WebSocket((import.meta.env ? import.meta.env.VITE_WS_BASE_URL : 'wss://charlies-hrms-backend.vercel.app') + '/dashboard-metrics?role=admin');
   
   ws.onopen = () => {
     // ...existing code...
