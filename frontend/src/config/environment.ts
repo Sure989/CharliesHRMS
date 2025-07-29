@@ -1,7 +1,7 @@
 // Environment configuration for the frontend application
 export const config = {
   // API Configuration
-  apiBaseUrl: 'https://chalies-hrms-backend.vercel.app/api',
+  apiBaseUrl: import.meta.env.VITE_API_BASE_URL,
   
   // App Configuration
   appName: import.meta.env.VITE_APP_NAME || "Charlie's HRMS",
