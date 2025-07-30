@@ -122,7 +122,8 @@ const RealTimeDashboard: React.FC<RealTimeDashboardProps> = ({ role }) => {
   const [metricsData, setMetricsData] = useState<any>(null);
   const [apiLoading, setApiLoading] = useState(false);
 
-  usePolling(async () => {
+  // Unified fetch function for metrics
+  const fetchMetrics = useCallback(async () => {
     setApiLoading(true);
     try {
       const response = await apiClient.get('/dashboard/metrics');
@@ -131,7 +132,6 @@ const RealTimeDashboard: React.FC<RealTimeDashboardProps> = ({ role }) => {
       if (data?.status === 'success' && data.data) {
         setMetricsData(data.data);
       } else {
-        // Fallback: try to set the whole response if structure is unexpected
         setMetricsData(data.data ?? response.data ?? null);
       }
     } catch (error) {
@@ -139,7 +139,15 @@ const RealTimeDashboard: React.FC<RealTimeDashboardProps> = ({ role }) => {
     } finally {
       setApiLoading(false);
     }
-  }, { interval: 30000 });
+  }, []);
+
+  // Polling for metrics every 30 seconds
+  usePolling(fetchMetrics, { interval: 30000 });
+
+  // Initial load: fetch metrics once when component mounts
+  React.useEffect(() => {
+    fetchMetrics();
+  }, [fetchMetrics]);
 
   // Process WebSocket data to derive metrics
   const processedData = useMemo(() => {
@@ -266,7 +274,7 @@ const RealTimeDashboard: React.FC<RealTimeDashboardProps> = ({ role }) => {
 
   // Manual refresh: reconnect WebSocket
   const handleRefresh = () => {
-    window.location.reload();
+    fetchMetrics();
   };
 
   const formatCurrency = (amount?: number) => {

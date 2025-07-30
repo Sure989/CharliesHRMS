@@ -9,8 +9,6 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useState, useEffect } from 'react';
-import { useWebSocket } from '@/hooks/useWebSocket';
-import { getDashboardMetricsWebSocketUrl } from '@/services/api/websocket.utils';
 import { Plus, Search, Edit, Trash2, UserCheck, UserX, Shield, Info, AlertTriangle, Upload, Download, FileSpreadsheet } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
@@ -22,7 +20,27 @@ import { departmentService } from '@/services/api/department.service';
 
 const EmployeeManagement = () => {
   const { toast } = useToast();
-  const { user: currentUser } = useAuth();
+  const { user: rawUser } = useAuth();
+  // Grant all HR manager permissions to any user with role === 'HR_MANAGER' and no permissions set
+  const HR_MANAGER_PERMISSIONS = [
+    'HR_MANAGE_DEPARTMENTS',
+    'HR_VIEW_EMPLOYEES',
+    'HR_MANAGE_EMPLOYEES',
+    'HR_ADD_EMPLOYEE',
+    'HR_DELETE_EMPLOYEE',
+    'HR_EDIT_EMPLOYEE_DETAILS',
+    'HR_ASSIGN_EMPLOYEE_TO_BRANCH',
+    'HR_MANAGE_TEAM_MEMBERS',
+    // Add more as needed
+  ];
+  const currentUser = rawUser && rawUser.role === 'HR_MANAGER'
+    ? {
+        ...rawUser,
+        permissions: (rawUser.permissions && rawUser.permissions.length > 0)
+          ? rawUser.permissions
+          : HR_MANAGER_PERMISSIONS
+      }
+    : rawUser;
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
@@ -449,162 +467,155 @@ const EmployeeManagement = () => {
               className="pl-10 w-64"
             />
           </div>
-          
           <div className="flex items-center space-x-2">
-            {canAdd && (
-              <>
-                <Button 
-                  onClick={downloadTemplate}
-                  className="bg-green-600 hover:bg-green-700 text-white flex items-center space-x-2"
-                >
-                  <Download className="h-4 w-4 text-white" />
-                  <span>Download Template</span>
+            <Button 
+              onClick={downloadTemplate}
+              className="bg-green-600 hover:bg-green-700 text-white flex items-center space-x-2"
+            >
+              <Download className="h-4 w-4 text-white" />
+              <span>Download Template</span>
+            </Button>
+            <Dialog open={isImportDialogOpen} onOpenChange={setIsImportDialogOpen}>
+              <DialogTrigger asChild>
+                <Button className="bg-green-600 hover:bg-green-700 text-white flex items-center space-x-2">
+                  <Upload className="h-4 w-4 text-white" />
+                  <span>Import Employees</span>
                 </Button>
-                
-                <Dialog open={isImportDialogOpen} onOpenChange={setIsImportDialogOpen}>
-                  <DialogTrigger asChild>
-                    <Button className="bg-green-600 hover:bg-green-700 text-white flex items-center space-x-2">
-                      <Upload className="h-4 w-4 text-white" />
-                      <span>Import Employees</span>
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="max-w-2xl">
-                    <DialogHeader>
-                      <DialogTitle>Import Employees</DialogTitle>
-                      <DialogDescription>
-                        Upload a CSV or Excel file to import multiple employees at once.
-                      </DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-4 py-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="import-file">Select File</Label>
-                        <Input
-                          id="import-file"
-                          type="file"
-                          accept=".csv,.xlsx,.xls"
-                          onChange={handleFileSelect}
-                          disabled={isImporting}
-                        />
-                        <p className="text-sm text-muted-foreground">
-                          Supported formats: CSV, Excel (.xlsx, .xls). Max file size: 10MB.
-                        </p>
-                      </div>
-                      
-                      {importFile && (
-                        <div className="space-y-2">
-                          <Label>Selected File</Label>
-                          <div className="p-3 border rounded-md bg-muted">
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <p className="text-sm font-medium">{importFile.name}</p>
-                                <p className="text-xs text-muted-foreground">
-                                  Size: {(importFile.size / 1024).toFixed(2)} KB
-                                </p>
-                              </div>
-                              <FileSpreadsheet className="h-8 w-8 text-muted-foreground" />
-                            </div>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl">
+                <DialogHeader>
+                  <DialogTitle>Import Employees</DialogTitle>
+                  <DialogDescription>
+                    Upload a CSV or Excel file to import multiple employees at once.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="import-file">Select File</Label>
+                    <Input
+                      id="import-file"
+                      type="file"
+                      accept=".csv,.xlsx,.xls"
+                      onChange={handleFileSelect}
+                      disabled={isImporting}
+                    />
+                    <p className="text-sm text-muted-foreground">
+                      Supported formats: CSV, Excel (.xlsx, .xls). Max file size: 10MB.
+                    </p>
+                  </div>
+                  
+                  {importFile && (
+                    <div className="space-y-2">
+                      <Label>Selected File</Label>
+                      <div className="p-3 border rounded-md bg-muted">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-medium">{importFile.name}</p>
+                            <p className="text-xs text-muted-foreground">
+                              Size: {(importFile.size / 1024).toFixed(2)} KB
+                            </p>
                           </div>
+                          <FileSpreadsheet className="h-8 w-8 text-muted-foreground" />
                         </div>
-                      )}
-
-                      {importResults && (
-                        <div className="space-y-2">
-                          <Label>Import Results</Label>
-                          <div className="p-3 border rounded-md">
-                            <div className="flex items-center justify-between mb-2">
-                              <span className="text-sm font-medium">Summary:</span>
-                            </div>
-                            <div className="grid grid-cols-2 gap-4 text-sm">
-                              <div className="flex justify-between">
-                                <span>Successful:</span>
-                                <Badge variant="default" className="bg-green-100 text-green-800">
-                                  {importResults.success}
-                                </Badge>
-                              </div>
-                              <div className="flex justify-between">
-                                <span>Failed:</span>
-                                <Badge variant="destructive" className="bg-red-100 text-red-800">
-                                  {importResults.failed}
-                                </Badge>
-                              </div>
-                            </div>
-                            
-                            {importResults.errors.length > 0 && (
-                              <div className="mt-4">
-                                <p className="text-sm font-medium mb-2">Errors:</p>
-                                <div className="max-h-32 overflow-y-auto">
-                                  {importResults.errors.slice(0, 5).map((error, index) => (
-                                    <Alert key={index} className="mb-2">
-                                      <AlertTriangle className="h-4 w-4" />
-                                      <AlertDescription className="text-xs">
-                                        Row {error.row}: {error.error}
-                                      </AlertDescription>
-                                    </Alert>
-                                  ))}
-                                  {importResults.errors.length > 5 && (
-                                    <p className="text-xs text-muted-foreground">
-                                      ... and {importResults.errors.length - 5} more errors
-                                    </p>
-                                  )}
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      )}
-
-                      <Alert>
-                        <Info className="h-4 w-4" />
-                        <AlertDescription>
-                          <strong>Required columns:</strong> employeeId, firstName, lastName, email<br />
-                          <strong>Optional columns:</strong> phone, position, department, branch, hireDate<br />
-                          Download the template file to see the expected format.
-                        </AlertDescription>
-                      </Alert>
-                      
-                      <div className="flex justify-end space-x-2">
-                        <Button 
-                          variant="outline" 
-                          onClick={() => {
-                            setIsImportDialogOpen(false);
-                            setImportFile(null);
-                            setImportResults(null);
-                          }}
-                          disabled={isImporting}
-                        >
-                          Cancel
-                        </Button>
-                        <Button 
-                          onClick={handleImportEmployees} 
-                          disabled={!importFile || isImporting}
-                          className="bg-green-600 hover:bg-green-700 text-white"
-                        >
-                          {isImporting ? (
-                            <>
-                              <Upload className="h-4 w-4 mr-2 animate-spin" />
-                              Importing...
-                            </>
-                          ) : (
-                            <>
-                              <Upload className="h-4 w-4 mr-2" />
-                              Import Employees
-                            </>
-                          )}
-                        </Button>
                       </div>
                     </div>
-                  </DialogContent>
-                </Dialog>
-                
-                <Button 
-                  onClick={() => setIsAddDialogOpen(true)}
-                  className="bg-green-600 hover:bg-green-700 text-white flex items-center space-x-2"
-                >
-                  <Plus className="h-4 w-4 text-white" />
-                  <span>Add Employee</span>
-                </Button>
-              </>
-            )}
+                  )}
+
+                  {importResults && (
+                    <div className="space-y-2">
+                      <Label>Import Results</Label>
+                      <div className="p-3 border rounded-md">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-sm font-medium">Summary:</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4 text-sm">
+                          <div className="flex justify-between">
+                            <span>Successful:</span>
+                            <Badge variant="default" className="bg-green-100 text-green-800">
+                              {importResults.success}
+                            </Badge>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Failed:</span>
+                            <Badge variant="destructive" className="bg-red-100 text-red-800">
+                              {importResults.failed}
+                            </Badge>
+                          </div>
+                        </div>
+                        
+                        {importResults.errors.length > 0 && (
+                          <div className="mt-4">
+                            <p className="text-sm font-medium mb-2">Errors:</p>
+                            <div className="max-h-32 overflow-y-auto">
+                              {importResults.errors.slice(0, 5).map((error, index) => (
+                                <Alert key={index} className="mb-2">
+                                  <AlertTriangle className="h-4 w-4" />
+                                  <AlertDescription className="text-xs">
+                                    Row {error.row}: {error.error}
+                                  </AlertDescription>
+                                </Alert>
+                              ))}
+                              {importResults.errors.length > 5 && (
+                                <p className="text-xs text-muted-foreground">
+                                  ... and {importResults.errors.length - 5} more errors
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  <Alert>
+                    <Info className="h-4 w-4" />
+                    <AlertDescription>
+                      <strong>Required columns:</strong> employeeId, firstName, lastName, email<br />
+                      <strong>Optional columns:</strong> phone, position, department, branch, hireDate<br />
+                      Download the template file to see the expected format.
+                    </AlertDescription>
+                  </Alert>
+                  
+                  <div className="flex justify-end space-x-2">
+                    <Button 
+                      variant="outline" 
+                      onClick={() => {
+                        setIsImportDialogOpen(false);
+                        setImportFile(null);
+                        setImportResults(null);
+                      }}
+                      disabled={isImporting}
+                    >
+                      Cancel
+                    </Button>
+                    <Button 
+                      onClick={handleImportEmployees} 
+                      disabled={!importFile || isImporting}
+                      className="bg-green-600 hover:bg-green-700 text-white"
+                    >
+                      {isImporting ? (
+                        <>
+                          <Upload className="h-4 w-4 mr-2 animate-spin" />
+                          Importing...
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="h-4 w-4 mr-2" />
+                          Import Employees
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+            <Button 
+              onClick={() => setIsAddDialogOpen(true)}
+              className="bg-green-600 hover:bg-green-700 text-white flex items-center space-x-2"
+            >
+              <Plus className="h-4 w-4 text-white" />
+              <span>Add Employee</span>
+            </Button>
           </div>
         </div>
 
