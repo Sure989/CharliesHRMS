@@ -12,21 +12,30 @@ export const hasPermission = (user: User | null, permission: PermissionKey): boo
  * Check if a user can add employees (Admin or HR only)
  */
 export const canAddEmployee = (user: User | null): boolean => {
-  return hasPermission(user, PERMISSIONS.HR_ADD_EMPLOYEE);
+if (!user) return false;
+const role = user.role?.toUpperCase();
+if (role === 'ADMIN' || role === 'HR_MANAGER') return true;
+return hasPermission(user, PERMISSIONS.HR_ADD_EMPLOYEE);
 };
 
 /**
  * Check if a user can delete employees (Admin or HR only)
  */
 export const canDeleteEmployee = (user: User | null): boolean => {
-  return hasPermission(user, PERMISSIONS.HR_DELETE_EMPLOYEE);
+if (!user) return false;
+const role = user.role?.toUpperCase();
+if (role === 'ADMIN' || role === 'HR_MANAGER') return true;
+return hasPermission(user, PERMISSIONS.HR_DELETE_EMPLOYEE);
 };
 
 /**
  * Check if a user can edit employee details (Admin or HR only)
  */
 export const canEditEmployeeDetails = (user: User | null): boolean => {
-  return hasPermission(user, PERMISSIONS.HR_EDIT_EMPLOYEE_DETAILS);
+if (!user) return false;
+const role = user.role?.toUpperCase();
+if (role === 'ADMIN' || role === 'HR_MANAGER') return true;
+return hasPermission(user, PERMISSIONS.HR_EDIT_EMPLOYEE_DETAILS);
 };
 
 /**
