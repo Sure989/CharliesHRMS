@@ -2,7 +2,6 @@ import { Request, Response } from 'express';
 import bcrypt from 'bcrypt';
 import prisma from '../lib/prisma';
 import { generateToken, generateRefreshToken, TokenPayload } from '../utils/jwt';
-import { getUserPermissions } from '../utils/permissions';
 import config from '../config/config';
 
 /**
@@ -38,10 +37,11 @@ export const login = async (req: Request, res: Response) => {
         permissions: ['admin:full_access']
       };
       
-      const tokenPayload = {
+      const tokenPayload: TokenPayload = {
         userId: mockUser.id,
         role: mockUser.role,
         tenantId: mockUser.tenantId,
+        permissions: mockUser.permissions,
       };
       
       const accessToken = generateToken(tokenPayload);
@@ -98,6 +98,7 @@ export const login = async (req: Request, res: Response) => {
       userId: user.id,
       role: user.role,
       tenantId: tenantIdForToken,
+      permissions: user.permissions,
     };
 
     // Generate tokens
@@ -123,9 +124,6 @@ export const login = async (req: Request, res: Response) => {
     });
 
     // Return tokens and user info
-    // Get user permissions based on their role
-    const permissions = getUserPermissions(user.role);
-
     // Fetch branchId and branch details if employeeId is present
     let branchId = null;
     let branch = null;
@@ -156,7 +154,7 @@ export const login = async (req: Request, res: Response) => {
           employeeId: user.employeeId,
           branchId,
           branch,
-          permissions: permissions, // Include permissions in the user object
+          permissions: user.permissions, // Include permissions in the user object
         },
         accessToken,
         refreshToken,
@@ -255,6 +253,7 @@ export const refreshToken = async (req: Request, res: Response) => {
       userId: session.user.id,
       role: session.user.role,
       tenantId: tenantIdForToken,
+      permissions: session.user.permissions,
     };
 
     // Generate new access token
@@ -331,7 +330,6 @@ export const getCurrentUser = async (req: Request, res: Response) => {
     }
 
     if (user) {
-      (user as any).permissions = getUserPermissions(user.role);
       (user as any).branchId = branchId;
       (user as any).branch = branch;
     }
@@ -421,10 +419,11 @@ export const register = async (req: Request, res: Response) => {
     });
 
     // Generate tokens
-    const tokenPayload = {
+    const tokenPayload: TokenPayload = {
       userId: user.id,
       role: user.role,
       tenantId: user.tenantId,
+      permissions: user.permissions,
     };
 
     const accessToken = generateToken(tokenPayload);
