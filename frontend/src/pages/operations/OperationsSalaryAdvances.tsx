@@ -58,7 +58,9 @@ const OperationsSalaryAdvances = () => {
     const status = (req.status || '').toLowerCase().replace(/\s|_/g, '').trim();
     const isRelevantStatus = status === 'pending' || status === 'pendingops' || status === 'pendingopsinitial' || status === 'pendingopreview' || status === 'forwardedtohr' || status === 'approved';
     const notOwnRequest = String(req.employeeId) !== String(user?.employeeId);
-    return isRelevantStatus && notOwnRequest;
+    // Exclude requests from employees with no branch assigned
+    const hasBranch = req.employee?.branch?.id || req.branch?.id || req.employee?.branchId || req.branchId;
+    return isRelevantStatus && notOwnRequest && !!hasBranch;
   };
 
   // Fetch all salary advance requests for operations manager

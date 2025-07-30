@@ -153,6 +153,9 @@ const OperationsLeaveApprovals = () => {
             let match = false;
             const empBranch = r.employee?.branch;
             if (r.employeeId === user?.employeeId) return false;
+            // Exclude requests from employees with no branch assigned
+            const hasBranch = empBranch?.id || r.branch?.id || r.employee?.branchId || r.branchId;
+            if (!hasBranch) return false;
             if (userBranchId && (empBranch?.id === userBranchId || (r.branch && typeof r.branch === 'object' && r.branch.id === userBranchId))) {
               match = true;
             }

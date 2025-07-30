@@ -109,15 +109,15 @@ export const getRoleDisplayName = (role: string): string => {
  */
 export const canManageDepartments = (user: User | null): boolean => {
   if (!user) return false;
-  if (user.role && user.role.toUpperCase() === 'ADMIN') return true;
-  return hasPermission(user, PERMISSIONS.HR_MANAGE_DEPARTMENTS);
+  const role = user.role?.toUpperCase();
+  return role === 'ADMIN' || role === 'HR_MANAGER' || role === 'OPERATIONS_MANAGER';
 };
 
 /**
  * Check if a user can view departments
  */
 export const canViewDepartments = (user: User | null): boolean => {
-  return hasPermission(user, PERMISSIONS.HR_VIEW_DEPARTMENTS) || canManageDepartments(user);
+  return canManageDepartments(user);
 };
 
 /**
@@ -125,15 +125,15 @@ export const canViewDepartments = (user: User | null): boolean => {
  */
 export const canManageBranches = (user: User | null): boolean => {
   if (!user) return false;
-  if (user.role && user.role.toUpperCase() === 'ADMIN') return true;
-  return hasPermission(user, PERMISSIONS.HR_MANAGE_BRANCHES);
+  const role = user.role?.toUpperCase();
+  return role === 'ADMIN' || role === 'HR_MANAGER' || role === 'OPERATIONS_MANAGER';
 };
 
 /**
  * Check if a user can view branches
  */
 export const canViewBranches = (user: User | null): boolean => {
-  return hasPermission(user, PERMISSIONS.HR_VIEW_BRANCHES) || canManageBranches(user);
+  return canManageBranches(user);
 };
 
 /**
@@ -215,14 +215,16 @@ export const canAccessDepartment = (user: User | null, departmentId: string): bo
  * Check if a user can manage performance reviews (Admin & HR only)
  */
 export const canManagePerformanceReviews = (user: User | null): boolean => {
-  return hasPermission(user, PERMISSIONS.HR_MANAGE_PERFORMANCE_REVIEWS);
+  if (!user) return false;
+  const role = user.role?.toUpperCase();
+  return role === 'ADMIN' || role === 'HR_MANAGER' || role === 'OPERATIONS_MANAGER';
 };
 
 /**
  * Check if a user can view performance reviews
  */
 export const canViewPerformanceReviews = (user: User | null): boolean => {
-  return hasPermission(user, PERMISSIONS.HR_VIEW_PERFORMANCE_REVIEWS) || canManagePerformanceReviews(user);
+  return canManagePerformanceReviews(user);
 };
 
 /**
@@ -236,14 +238,16 @@ export const canCreatePerformanceReview = (user: User | null): boolean => {
  * Check if a user can manage training programs (Admin & HR only)
  */
 export const canManageTrainingPrograms = (user: User | null): boolean => {
-  return hasPermission(user, PERMISSIONS.HR_MANAGE_TRAINING_PROGRAMS);
+  if (!user) return false;
+  const role = user.role?.toUpperCase();
+  return role === 'ADMIN' || role === 'HR_MANAGER' || role === 'OPERATIONS_MANAGER';
 };
 
 /**
  * Check if a user can view training programs
  */
 export const canViewTrainingPrograms = (user: User | null): boolean => {
-  return hasPermission(user, PERMISSIONS.HR_VIEW_TRAINING_PROGRAMS) || canManageTrainingPrograms(user);
+  return canManageTrainingPrograms(user);
 };
 
 /**
