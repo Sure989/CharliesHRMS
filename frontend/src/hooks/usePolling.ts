@@ -35,6 +35,18 @@ export function usePolling<T = any>(
   useEffect(() => {
     if (!enabled) return;
 
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchData();
+        if (intervalRef.current) clearInterval(intervalRef.current);
+        intervalRef.current = setInterval(fetchData, interval);
+      } else {
+        if (intervalRef.current) clearInterval(intervalRef.current);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
     // Clear existing interval
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
@@ -50,6 +62,7 @@ export function usePolling<T = any>(
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
       }
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [enabled, interval, fetchData]);
 

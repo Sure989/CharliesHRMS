@@ -1,6 +1,5 @@
-import { useEffect, useState } from 'react';
-import { useWebSocket } from '@/hooks/useWebSocket';
-import { getDashboardMetricsWebSocketUrl } from '@/services/api/websocket.utils';
+import React, { useEffect, useState, useCallback } from 'react';
+import { usePolling } from '@/hooks/usePolling';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -40,49 +39,50 @@ const PayrollDashboard = () => {
   const [complianceStatus, setComplianceStatus] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
-  const [wsData, wsConnected] = useWebSocket<any>(getDashboardMetricsWebSocketUrl('payroll'));
 
-  useEffect(() => {
-    const fetchPayrollData = async () => {
-      try {
-        setLoading(true);
-        const [
-          summary,
-          periods,
-        ] = await Promise.all([
-          payrollService.getPayrollStatistics(),
-          payrollService.getPayrollPeriods(),
-        ]);
+  usePolling(async () => {
+    try {
+      const [
+        summary,
+        periods,
+        trends,
+        departmentBreakdown,
+        branchBreakdown,
+        statutoryBreakdown,
+        recentActivity,
+        complianceStatus,
+      ] = await Promise.all([
+        payrollService.getPayrollStatistics(),
+        payrollService.getPayrollPeriods(),
+        payrollService.getPayrollRecords(),
+        PayrollDataService.getDepartmentBreakdown(),
+        PayrollDataService.getBranchBreakdown(),
+        PayrollDataService.getStatutoryBreakdown(),
+        PayrollDataService.getRecentActivity(),
+        PayrollDataService.getComplianceStatus(),
+      ]);
 
-        setPayrollSummary(summary);
-        if (periods.data.length > 0) {
-          setPayrollStatus({ currentPeriod: periods.data[0] });
-        }
-        // You can add more data fetching here for other sections
-        // For example, fetch recent activity
-        // const activity = await payrollService.getPayrollAuditLogs({ limit: 5 });
-        // setRecentActivity(activity);
-
-      } catch (error) {
-        console.error("Failed to fetch payroll data:", error);
-        toast({
-          title: "Error",
-          description: "Failed to fetch payroll data.",
-          variant: "destructive",
-        });
-      } finally {
-        setLoading(false);
+      setPayrollSummary(summary);
+      if (periods.data.length > 0) {
+        setPayrollStatus({ currentPeriod: periods.data[0] });
       }
-    };
-
-    fetchPayrollData();
-
-    if (wsData) {
-      // You can still use WebSocket for real-time updates
-      // For example, updating the summary
-      setPayrollSummary(wsData.payrollSummary || payrollSummary);
+      setPayrollTrendsData(Array.isArray(trends) ? trends : (trends?.data || []));
+      setDepartmentBreakdown(departmentBreakdown);
+      setBranchBreakdown(branchBreakdown);
+      setStatutoryBreakdownData(statutoryBreakdown);
+      setRecentActivity(recentActivity);
+      setComplianceStatus(complianceStatus);
+    } catch (error) {
+      console.error("Failed to fetch payroll data:", error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch payroll data.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
     }
-  }, [wsData, toast]);
+  }, { interval: 30000 });
 
   if (loading) {
     return (

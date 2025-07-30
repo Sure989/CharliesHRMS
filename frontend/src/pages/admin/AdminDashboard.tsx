@@ -1,6 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { useWebSocket } from '@/hooks/useWebSocket';
-import { getDashboardMetricsWebSocketUrl } from '@/services/api/websocket.utils';
+import { usePolling } from '@/hooks/usePolling';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -42,7 +41,6 @@ const AdminDashboard = () => {
     avgResponseTime: '120ms',
     storageUsed: 68
   });
-  const [wsMetrics, wsConnected] = useWebSocket<any>(getDashboardMetricsWebSocketUrl('admin'));
 
   // Real activities state
   const [recentActivities, setRecentActivities] = useState<any[]>([]);
@@ -51,58 +49,14 @@ const AdminDashboard = () => {
 
 
   // Use WebSocket for metrics, keep polling for system status only
-  useEffect(() => {
-    const fetchInitialData = async () => {
-      try {
-        setIsLoading(true);
-        const [
-          usersResponse,
-          departments,
-          branches,
-          systemStatusData,
-          activitiesData,
-          maintenanceData
-        ] = await Promise.all([
-          userService.getUsers().catch(() => ({ data: [] })),
-          departmentService.getAllDepartments().catch(() => []),
-          branchService.getAllBranches().catch(() => []),
-          adminService.getSystemStatus().catch(() => null),
-          adminService.getSystemActivities(10).catch(() => []),
-          adminService.getMaintenanceInfo().catch(() => null)
-        ]);
-
-        const users = usersResponse.data || [];
-        setMetrics({
-          totalUsers: users.length,
-          activeUsers: users.filter(u => u.status === 'active').length,
-          totalDepartments: departments.length,
-          totalBranches: branches.length,
-          systemUptime: maintenanceData?.systemUptime || '99.8%',
-          avgResponseTime: '120ms',
-          storageUsed: 68
-        });
-
-        if (systemStatusData) setSystemStatus(systemStatusData);
-        setRecentActivities(activitiesData);
-        setMaintenanceInfo(maintenanceData);
-
-      } catch (error) {
-        console.error('Failed to fetch initial admin data:', error);
-        alert('Failed to load initial admin dashboard data.');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchInitialData();
-
-    if (wsMetrics) {
-      setMetrics((prev) => ({ ...prev, ...wsMetrics }));
-      if (wsMetrics.recentActivities) setRecentActivities(wsMetrics.recentActivities);
-      if (wsMetrics.maintenanceInfo) setMaintenanceInfo(wsMetrics.maintenanceInfo);
+  usePolling(async () => {
+    try {
+      const response = await adminService.getDashboardMetrics();
+      setMetrics(response);
+    } catch (error) {
+      console.error('Failed to fetch dashboard metrics:', error);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [wsMetrics]);
+  }, { interval: 30000 }); // Poll every 30 seconds
 
   useEffect(() => {
     // Reduce polling frequency for system status - only poll if not loading

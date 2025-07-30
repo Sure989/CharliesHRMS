@@ -1,14 +1,27 @@
 
 import React from 'react';
-import { useWebSocket } from '@/hooks/useWebSocket';
-import { getDashboardMetricsWebSocketUrl } from '@/services/api/websocket.utils';
+import { useEffect, useState } from 'react';
+import { apiClient } from '@/services/apiClient';
 
 const AdvancedAnalytics: React.FC = () => {
-  const [wsData, wsConnected] = useWebSocket<any>(getDashboardMetricsWebSocketUrl('advanced-analytics'));
-  const overtime = wsData?.overtime || null;
-  const attendance = wsData?.attendance || null;
-  const loading = !wsConnected && !wsData;
-  const error = wsData?.error || null;
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    apiClient.get('/dashboard/metrics?type=advanced-analytics')
+      .then(response => {
+        setData(response.data);
+        setError(null);
+      })
+      .catch(err => {
+        setError(err.message || 'Failed to fetch analytics');
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
+  const overtime = data?.overtime || null;
+  const attendance = data?.attendance || null;
 
   if (loading) return <div>Loading advanced analytics...</div>;
   if (error) return <div className="text-red-600">{error}</div>;

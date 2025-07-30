@@ -82,6 +82,24 @@ export interface UpdateExperimentalFeatureDto {
 
 class AdminService {
   /**
+   * Get dashboard metrics
+   */
+  async getDashboardMetrics(): Promise<any> {
+    try {
+      const response = await apiClient.get<any>('/metrics/dashboard');
+      
+      if (response.status === 'success' && response.data) {
+        return response.data;
+      }
+      
+      throw new Error(response.message || 'Failed to get dashboard metrics');
+    } catch (error) {
+      console.error('Get dashboard metrics error:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Get system status
    */
   async getSystemStatus(): Promise<SystemStatus> {
