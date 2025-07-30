@@ -5,13 +5,11 @@ import { Users, Calendar, TrendingUp, UserCheck, BookOpen, Building, Award, Cloc
 import { Link } from 'react-router-dom';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
 import { useState, useEffect } from 'react';
-import { useWebSocket } from '@/hooks/useWebSocket';
-import { getDashboardMetricsWebSocketUrl } from '@/services/api/websocket.utils';
+import { usePolling } from '@/hooks/usePolling';
 import { analyticsService } from '@/services/api/analytics.service';
 
 const HRDashboard = () => {
   const [dashboardMetrics, setDashboardMetrics] = useState<any>(null);
-  const [wsMetrics, wsConnected] = useWebSocket<any>(getDashboardMetricsWebSocketUrl('hr'));
   const [employeeAnalytics, setEmployeeAnalytics] = useState(null);
   const [leaveAnalytics, setLeaveAnalytics] = useState(null);
   const [performanceAnalytics, setPerformanceAnalytics] = useState(null);
@@ -21,55 +19,41 @@ const HRDashboard = () => {
   const [loading, setLoading] = useState(true);
 
   // Use WebSocket for dashboard metrics and fetch other analytics data
-  useEffect(() => {
-    const fetchAnalytics = async () => {
-      try {
-        setLoading(true);
-        const [
-          dashboardData,
-          employeeData,
-          leaveData,
-          performanceData,
-          trainingData,
-          salaryAdvanceData,
-          activities,
-        ] = await Promise.all([
-          analyticsService.getDashboardMetrics('hr'),
-          analyticsService.getEmployeeAnalytics(),
-          analyticsService.getLeaveAnalytics(),
-          analyticsService.getPerformanceAnalytics(),
-          analyticsService.getTrainingAnalytics(),
-          analyticsService.getSalaryAdvanceAnalytics(),
-          analyticsService.getRecentActivities(),
-        ]);
-
-        // ...existing code...
-
-        setDashboardMetrics(dashboardData);
-        setEmployeeAnalytics(employeeData);
-        setLeaveAnalytics(leaveData);
-        setPerformanceAnalytics(performanceData);
-        setTrainingAnalytics(trainingData);
-        setSalaryAdvanceAnalytics(salaryAdvanceData);
-        setRecentActivities(activities.data || []);
-      } catch (error) {
-        console.error("Failed to fetch analytics data:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchAnalytics();
-  }, []);
-
-  useEffect(() => {
-    if (wsMetrics) {
-      setDashboardMetrics((prevMetrics) => ({
-        ...prevMetrics,
-        ...wsMetrics,
-      }));
+  usePolling(async () => {
+    try {
+      setLoading(true);
+      const [
+        dashboardData,
+        employeeData,
+        leaveData,
+        performanceData,
+        trainingData,
+        salaryAdvanceData,
+        activities,
+      ] = await Promise.all([
+        analyticsService.getDashboardMetrics('hr'),
+        analyticsService.getEmployeeAnalytics(),
+        analyticsService.getLeaveAnalytics(),
+        analyticsService.getPerformanceAnalytics(),
+        analyticsService.getTrainingAnalytics(),
+        analyticsService.getSalaryAdvanceAnalytics(),
+        analyticsService.getRecentActivities(),
+      ]);
+      setDashboardMetrics(dashboardData);
+      setEmployeeAnalytics(employeeData);
+      setLeaveAnalytics(leaveData);
+      setPerformanceAnalytics(performanceData);
+      setTrainingAnalytics(trainingData);
+      setSalaryAdvanceAnalytics(salaryAdvanceData);
+      setRecentActivities(activities.data || []);
+    } catch (error) {
+      console.error("Failed to fetch analytics data:", error);
+    } finally {
+      setLoading(false);
     }
-  }, [wsMetrics]);
+  }, { interval: 30000 });
+
+  // ...existing code...
 
   if (loading) {
     return (

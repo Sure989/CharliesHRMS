@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useWebSocket } from '@/hooks/useWebSocket';
-import { getDashboardMetricsWebSocketUrl } from '@/services/api/websocket.utils';
+import { usePolling } from '@/hooks/usePolling';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -15,15 +14,24 @@ const ComplianceDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [wsData, wsConnected] = useWebSocket<any>(getDashboardMetricsWebSocketUrl('compliance'));
-  useEffect(() => {
-    if (wsData) {
-      setComplianceOverview(wsData.complianceOverview || null);
-      setRecentViolations(wsData.recentViolations || []);
-      setPolicyCompliance(wsData.policyCompliance || []);
+  usePolling(async () => {
+    setLoading(true);
+    try {
+      const [overview, violations, policies] = await Promise.all([
+        adminService.getComplianceOverview(),
+        adminService.getComplianceViolations(),
+        adminService.getPolicyCompliance()
+      ]);
+      setComplianceOverview(overview || null);
+      setRecentViolations(violations || []);
+      setPolicyCompliance(policies || []);
+      setError(null);
+    } catch (err) {
+      setError('Failed to fetch compliance data');
+    } finally {
       setLoading(false);
     }
-  }, [wsData]);
+  }, { interval: 30000 });
 
   const getStatusIcon = (status: string) => {
     switch (status.toLowerCase()) {

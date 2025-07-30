@@ -7,8 +7,7 @@ import { Progress } from '@/components/ui/progress';
 import {
   Users, DollarSign, Calendar, TrendingUp, AlertTriangle, Clock, RefreshCw, Bell
 } from 'lucide-react';
-import { useWebSocket } from '@/hooks/useWebSocket';
-import { getDashboardMetricsWebSocketUrl } from '@/services/api/websocket.utils';
+import { usePolling } from '@/hooks/usePolling';
 import { useAuth } from '@/contexts/AuthContext';
 import { config } from '@/config/environment';
 import { apiClient } from '@/services/apiClient';
@@ -120,34 +119,27 @@ const RealTimeDashboard: React.FC<RealTimeDashboardProps> = ({ role }) => {
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Use WebSocket for all dashboard metrics and system status
-  const [wsData, wsConnected, loading] = useWebSocket<any>(getDashboardMetricsWebSocketUrl(userRole));
-  const [apiData, setApiData] = useState<any>(null);
+  const [metricsData, setMetricsData] = useState<any>(null);
   const [apiLoading, setApiLoading] = useState(false);
 
-  // Fallback to API when WebSocket fails
-  React.useEffect(() => {
-    if (!wsConnected && !loading && !wsData) {
-      setApiLoading(true);
-      apiClient.get('/dashboard/metrics')
-        .then(response => {
-          const data = response.data as { status?: string; data?: any };
-          if (data?.status === 'success') {
-            setApiData(data.data);
-          }
-        })
-        .catch(error => {
-          // ...existing code...
-        })
-        .finally(() => {
-          setApiLoading(false);
-        });
+  usePolling(async () => {
+    setApiLoading(true);
+    try {
+      const response = await apiClient.get('/dashboard/metrics');
+      const data = response.data as { status?: string; data?: any };
+      if (data?.status === 'success') {
+        setMetricsData(data.data);
+      }
+    } catch (error) {
+      // ...existing code...
+    } finally {
+      setApiLoading(false);
     }
-  }, [wsConnected, loading, wsData]);
+  }, { interval: 30000 });
 
   // Process WebSocket data to derive metrics
   const processedData = useMemo(() => {
-    const dataSource = wsData || apiData;
+    const dataSource = metricsData;
     if (!dataSource) {
       return {
         metrics: null,
@@ -263,15 +255,15 @@ const RealTimeDashboard: React.FC<RealTimeDashboardProps> = ({ role }) => {
       realTimeData: realTimeData,
       wsError: wsError,
     };
-  }, [wsData, apiData]); // Re-calculate when wsData or apiData changes
+  }, [metricsData]); // Re-calculate when metricsData changes
 
   const { metrics, realTimeData, wsError } = processedData;
   // Use the processed employees data, with a fallback for safety
   const employees = metrics?.employees ?? { total: 0, active: 0, inactive: 0, newHires: 0, recentHires: [], departmentDistribution: [], branchDistribution: [] };
 
   React.useEffect(() => {
-    if (wsData || apiData) setLastUpdated(new Date());
-  }, [wsData, apiData]); // Depend on wsData or apiData to update lastUpdated
+    if (metricsData) setLastUpdated(new Date());
+  }, [metricsData]); // Depend on metricsData to update lastUpdated
 
   // Manual refresh: reconnect WebSocket
   const handleRefresh = () => {
@@ -291,7 +283,7 @@ const RealTimeDashboard: React.FC<RealTimeDashboardProps> = ({ role }) => {
     }
   };
 
-  if ((loading || apiLoading) && !wsData && !apiData) { // Check loading state and if data is still null
+  if (apiLoading && !metricsData) { // Check loading state and if data is still null
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {[...Array(8)].map((_, i) => (
@@ -306,22 +298,9 @@ const RealTimeDashboard: React.FC<RealTimeDashboardProps> = ({ role }) => {
     );
   }
 
-  if (wsError) {
-    return (
-      <Alert variant="destructive">
-        <AlertTriangle className="h-4 w-4" />
-        <AlertDescription>
-          Failed to load dashboard data: {String(wsError)}
-          <Button variant="outline" size="sm" onClick={handleRefresh} className="ml-2">
-            <RefreshCw className="h-4 w-4 mr-1" />
-            Retry
-          </Button>
-        </AlertDescription>
-      </Alert>
-    );
-  }
+  // ...existing code...
 
-  if (!wsData && !apiData) { // If no data is available after loading, show no data message
+  if (!metricsData) { // If no data is available after loading, show no data message
     return (
       <Alert variant="destructive">
         <AlertTriangle className="h-4 w-4" />
