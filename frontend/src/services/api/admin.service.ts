@@ -86,7 +86,7 @@ class AdminService {
    */
   async getDashboardMetrics(): Promise<any> {
     try {
-      const response = await apiClient.get<any>('/metrics/dashboard');
+      const response = await apiClient.get<any>('/dashboard');
       
       if (response.status === 'success' && response.data) {
         return response.data;

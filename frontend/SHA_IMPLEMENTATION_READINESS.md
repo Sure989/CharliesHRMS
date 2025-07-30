@@ -3,11 +3,13 @@
 ## Current Status (January 2025)
 
 ### What We Know
+
 - **SHA has officially replaced NHIF** as Kenya's health insurance authority
 - The transition has been announced and SHA is operational
 - SHA registration portals are available (sha.go.ke)
 
 ### What We Don't Know (Awaiting Official Publication)
+
 - **Contribution rates and payment structures**
 - **Payroll deduction formulas and brackets**
 - **Employer vs employee contribution splits**
@@ -17,6 +19,7 @@
 ## HRMS Readiness Status
 
 ### ✅ Completed Preparations
+
 1. **Codebase is SHA-ready**: All payroll logic is centralized and easy to modify
 2. **Types are prepared**: Added TODO comments for SHA fields in `payroll.ts`
 3. **Engine is modular**: PayrollEngine can easily accommodate new deduction structures
@@ -26,6 +29,7 @@
 ### 🔄 Pending Actions (When SHA Details Are Available)
 
 #### 1. Update Type Definitions (`src/types/payroll.ts`)
+
 ```typescript
 // Add to KenyanStatutoryDeductions
 export interface KenyanStatutoryDeductions {
@@ -46,23 +50,27 @@ export interface KenyanPayStub {
 ```
 
 #### 2. Update Payroll Engine (`src/services/payrollEngine.ts`)
+
 - Replace `NHIF_BANDS` with `SHA_BANDS` or `SHA_RATES`
 - Update contribution calculation methods
 - Modify deduction calculation logic
 - Update validation rules
 
 #### 3. Update UI Components
+
 - **PayrollReports**: Update statutory deduction displays
 - **TaxManagement**: Add SHA management features
 - **PayStubViewer**: Replace NHIF with SHA on pay stubs
 - **EmployeeCompensation**: Update deduction breakdowns
 
 #### 4. Update API Integration
+
 - Modify payroll service calls to include SHA data
 - Update employee records to include SHA numbers
 - Ensure backend supports SHA calculations
 
 #### 5. Database Schema Updates
+
 - Add `sha_number` fields to employee records
 - Update payroll history tables
 - Create migration scripts for NHIF to SHA transition
@@ -70,12 +78,14 @@ export interface KenyanPayStub {
 ## Monitoring Strategy
 
 ### Official Sources to Monitor
-1. **SHA Official Website**: https://sha.go.ke/
-2. **Ministry of Health**: https://www.health.go.ke/
-3. **Kenya Revenue Authority**: https://www.kra.go.ke/
-4. **National Treasury**: https://www.treasury.go.ke/
+
+1. **SHA Official Website**: <https://sha.go.ke/>
+2. **Ministry of Health**: <https://www.health.go.ke/>
+3. **Kenya Revenue Authority**: <https://www.kra.go.ke/>
+4. **National Treasury**: <https://www.treasury.go.ke/>
 
 ### Key Information to Watch For
+
 - **Contribution Rate Structures**: Percentage-based vs bracket-based
 - **Monthly Premium Amounts**: Fixed amounts or income-based
 - **Employer Obligations**: Remittance deadlines and processes
@@ -86,24 +96,28 @@ export interface KenyanPayStub {
 ## Implementation Timeline (Once Information Is Available)
 
 ### Phase 1: Analysis (1-2 days)
+
 - Review official SHA documentation
 - Compare with current NHIF structure
 - Identify code changes required
 - Plan migration strategy
 
 ### Phase 2: Development (3-5 days)
+
 - Update type definitions
 - Modify payroll engine calculations
 - Update UI components
 - Test calculations with sample data
 
 ### Phase 3: Testing (2-3 days)
+
 - Unit tests for new calculations
 - Integration tests for payroll process
 - User acceptance testing
 - Performance validation
 
 ### Phase 4: Deployment (1-2 days)
+
 - Database migrations
 - Code deployment
 - User training materials
@@ -112,12 +126,14 @@ export interface KenyanPayStub {
 ## Risk Mitigation
 
 ### Potential Challenges
+
 1. **Calculation Complexity**: SHA may use different calculation methods than NHIF
 2. **Data Migration**: Transitioning employee records from NHIF to SHA numbers
 3. **Compliance Gaps**: Ensuring no payroll processing gaps during transition
 4. **User Training**: Staff need to understand new deduction structures
 
 ### Mitigation Strategies
+
 1. **Parallel Processing**: Run SHA calculations alongside NHIF until confirmed
 2. **Phased Rollout**: Test with small employee groups first
 3. **Backup Plans**: Maintain NHIF capability until SHA is fully stable
@@ -126,6 +142,7 @@ export interface KenyanPayStub {
 ## Current Code Markers
 
 All locations in the codebase that need SHA updates are marked with:
+
 - `TODO: SHA` comments in type definitions
 - `TODO: Replace with SHA` comments in calculation logic
 - Comments indicating NHIF replacement requirements

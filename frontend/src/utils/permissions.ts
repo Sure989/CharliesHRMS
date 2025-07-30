@@ -99,6 +99,8 @@ export const getRoleDisplayName = (role: string): string => {
  * Check if a user can manage departments (Admin or HR only)
  */
 export const canManageDepartments = (user: User | null): boolean => {
+  if (!user) return false;
+  if (user.role && user.role.toUpperCase() === 'ADMIN') return true;
   return hasPermission(user, PERMISSIONS.HR_MANAGE_DEPARTMENTS);
 };
 
@@ -113,6 +115,8 @@ export const canViewDepartments = (user: User | null): boolean => {
  * Check if a user can manage branches (Admin or HR only)
  */
 export const canManageBranches = (user: User | null): boolean => {
+  if (!user) return false;
+  if (user.role && user.role.toUpperCase() === 'ADMIN') return true;
   return hasPermission(user, PERMISSIONS.HR_MANAGE_BRANCHES);
 };
 
