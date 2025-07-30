@@ -81,15 +81,14 @@ verificationLink: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/verify
 **File**: `frontend/src/services/apiClient.ts`
 
 ```typescript
-this.baseURL = config.apiBaseUrl || 'http://localhost:3001/api';
+this.baseURL = config.apiBaseUrl;
 ```
 
 #### **2. 📡 WebSocket URL**
-
 **File**: `frontend/src/services/api/websocket.utils.ts`
 
 ```typescript
-const base = import.meta.env.VITE_WS_BASE_URL || 'wss://charlies-hrms-backend.vercel.app';
+const base = import.meta.env.VITE_WS_BASE_URL;
 ```
 
 #### **3. 🏗️ Vite Configuration**

@@ -117,6 +117,8 @@ export const updateUserStatus = async (req: Request, res: Response) => {
   }
 };
 
+import { ALL_PERMISSIONS } from '../utils/permissions';
+
 // Update user permissions
 export const updateUserPermissions = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -141,16 +143,9 @@ export const updateUserPermissions = async (req: Request, res: Response, next: N
       return res.status(404).json({ status: 'error', message: 'User not found' });
     }
 
-    // If user is admin, assign all permissions
-    let newPermissions = permissions;
-    if (existingUser.role === 'ADMIN') {
-      // Import all permissions from backend/src/utils/permissions
-      const { PERMISSIONS } = require('../utils/permissions');
-      newPermissions = Object.values(PERMISSIONS);
-    }
     const updatedUser = await prisma.user.update({
       where: { id },
-      data: { permissions: newPermissions },
+      data: { permissions },
       select: {
         id: true,
         firstName: true,
@@ -167,6 +162,52 @@ export const updateUserPermissions = async (req: Request, res: Response, next: N
   } catch (error) {
     console.error('Update user permissions error:', error);
     return res.status(500).json({ status: 'error', message: 'Failed to update user permissions' });
+  }
+};
+
+// Update user role
+export const updateUserRole = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+    const { role } = req.body;
+    const tenantId = req.tenantId;
+
+    if (!tenantId) {
+      return res.status(401).json({ status: 'error', message: 'Tenant ID is required' });
+    }
+
+    if (!role) {
+      return res.status(400).json({ status: 'error', message: 'Role is required' });
+    }
+
+    // Check if user exists and belongs to tenant
+    const existingUser = await prisma.user.findFirst({
+      where: { id, tenantId }
+    });
+
+    if (!existingUser) {
+      return res.status(404).json({ status: 'error', message: 'User not found' });
+    }
+
+    const updatedUser = await prisma.user.update({
+      where: { id },
+      data: { role },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        role: true,
+        status: true,
+        permissions: true,
+        createdAt: true,
+        updatedAt: true
+      }
+    });
+    return res.status(200).json({ status: 'success', data: { user: updatedUser } });
+  } catch (error) {
+    console.error('Update user role error:', error);
+    return res.status(500).json({ status: 'error', message: 'Failed to update user role' });
   }
 };
 
@@ -289,25 +330,7 @@ export const getDepartments = async (req: Request, res: Response, next: NextFunc
 // Get available permissions
 export const getPermissions = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const permissions = [
-      'user_management',
-      'system_admin',
-      'reports',
-      'workflow_management',
-      'salary_advances',
-      'leave_management',
-      'employee_management',
-      'performance_management',
-      'branch_management',
-      'leave_approval',
-      'salary_advance_approval',
-      'staff_scheduling',
-      'profile_view',
-      'leave_request',
-      'salary_advance_request',
-      'staff_coordination'
-    ];
-    res.json({ status: 'success', data: permissions });
+    res.json({ status: 'success', data: ALL_PERMISSIONS });
   } catch (error) {
     next(error);
   }

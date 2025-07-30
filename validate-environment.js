@@ -205,7 +205,7 @@ function validateFrontend() {
   const requirements = {
     VITE_API_BASE_URL: {
       format: /^https?:\/\//,
-      notDefault: ['https://charlies-hrms-backend.vercel.app/api']
+      notDefault: ['https://charlies-hrms-backend.vercel.app/api', 'http://localhost:3001/api']
     }
   };
 

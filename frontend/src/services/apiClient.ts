@@ -73,7 +73,10 @@ class ApiClient {
   private readonly CACHE_DURATION = 5000; // 5 seconds cache for identical requests
 
   constructor() {
-    this.baseURL = config.apiBaseUrl || 'http://localhost:3001/api';
+    if (!config.apiBaseUrl) {
+      throw new Error('API base URL is not set. Please configure VITE_API_BASE_URL in your environment variables.');
+    }
+    this.baseURL = config.apiBaseUrl;
   }
 
   private getCacheKey(endpoint: string, options: RequestInit): string {

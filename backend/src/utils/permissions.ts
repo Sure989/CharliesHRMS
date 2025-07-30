@@ -1,144 +1,54 @@
-// backend/src/utils/permissions.ts
-
 export const PERMISSIONS = {
-  // Admin permissions (full access)
-  ADMIN_FULL_ACCESS: 'admin:full_access',
+  // User Management
+  USER_CREATE: 'user:create',
+  USER_READ: 'user:read',
+  USER_UPDATE: 'user:update',
+  USER_DELETE: 'user:delete',
+  USER_EDIT_PERMISSIONS: 'user:edit_permissions',
+  USER_EDIT_ROLE: 'user:edit_role',
 
-  // HR Manager permissions
-  HR_VIEW_EMPLOYEES: 'hr:view_employees',
-  HR_MANAGE_EMPLOYEES: 'hr:manage_employees',
-  HR_ADD_EMPLOYEE: 'hr:add_employee',
-  HR_DELETE_EMPLOYEE: 'hr:delete_employee',
-  HR_EDIT_EMPLOYEE_DETAILS: 'hr:edit_employee_details',
-  HR_ASSIGN_EMPLOYEE_TO_BRANCH: 'hr:assign_employee_to_branch',
-  HR_MANAGE_TEAM_MEMBERS: 'hr:manage_team_members',
-  HR_VIEW_TEAM_DETAILS: 'hr:view_team_details',
-  HR_EDIT_TEAM_MEMBER_STATUS: 'hr:edit_team_member_status',
-  HR_VIEW_PAYROLL: 'hr:view_payroll',
-  HR_MANAGE_PAYROLL: 'hr:manage_payroll',
-  HR_VIEW_LEAVE: 'hr:view_leave',
-  HR_MANAGE_LEAVE: 'hr:manage_leave',
-  HR_VIEW_PERFORMANCE: 'hr:view_performance',
-  HR_MANAGE_PERFORMANCE: 'hr:manage_performance',
-  HR_MANAGE_PERFORMANCE_REVIEWS: 'hr:manage_performance_reviews',
-  HR_VIEW_PERFORMANCE_REVIEWS: 'hr:view_performance_reviews',
-  HR_CREATE_PERFORMANCE_REVIEW: 'hr:create_performance_review',
-  HR_VIEW_TRAINING: 'hr:view_training',
-  HR_MANAGE_TRAINING: 'hr:manage_training',
-  HR_MANAGE_TRAINING_PROGRAMS: 'hr:manage_training_programs',
-  HR_VIEW_TRAINING_PROGRAMS: 'hr:view_training_programs',
-  HR_CREATE_TRAINING_PROGRAM: 'hr:create_training_program',
-  HR_VIEW_DEPARTMENTS: 'hr:view_departments',
-  HR_MANAGE_DEPARTMENTS: 'hr:manage_departments',
-  HR_CREATE_DEPARTMENT: 'hr:create_department',
-  HR_EDIT_DEPARTMENT: 'hr:edit_department',
-  HR_DELETE_DEPARTMENT: 'hr:delete_department',
-  HR_VIEW_BRANCHES: 'hr:view_branches',
-  HR_MANAGE_BRANCHES: 'hr:manage_branches',
-  HR_CREATE_BRANCH: 'hr:create_branch',
-  HR_EDIT_BRANCH: 'hr:edit_branch',
-  HR_DELETE_BRANCH: 'hr:delete_branch',
-  HR_MANAGE_BRANCH_OPERATIONS: 'hr:manage_branch_operations',
-  HR_VIEW_SALARY_ADVANCES: 'hr:view_salary_advances',
-  HR_MANAGE_SALARY_ADVANCES: 'hr:manage_salary_advances',
+  // Role Management
+  ROLE_CREATE: 'role:create',
+  ROLE_READ: 'role:read',
+  ROLE_UPDATE: 'role:update',
+  ROLE_DELETE: 'role:delete',
 
-  // Operations Manager permissions
-  OPS_VIEW_EMPLOYEES: 'ops:view_employees',
-  OPS_MANAGE_EMPLOYEES: 'ops:manage_employees',
-  OPS_VIEW_LEAVE_APPROVALS: 'ops:view_leave_approvals',
-  OPS_APPROVE_LEAVE: 'ops:approve_leave',
-  OPS_VIEW_SALARY_ADVANCES: 'ops:view_salary_advances',
-  OPS_APPROVE_SALARY_ADVANCES: 'ops:approve_salary_advances',
-  OPS_VIEW_BRANCH_PERFORMANCE: 'ops:view_branch_performance',
+  // System Administration
+  SYSTEM_MANAGE_SETTINGS: 'system:manage_settings',
+  SYSTEM_VIEW_LOGS: 'system:view_logs',
 
-  // Employee permissions
-  EMPLOYEE_VIEW_PROFILE: 'employee:view_profile',
-  EMPLOYEE_EDIT_PROFILE: 'employee:edit_profile',
-  EMPLOYEE_VIEW_PAYSLIPS: 'employee:view_payslips',
-  EMPLOYEE_REQUEST_LEAVE: 'employee:request_leave',
-  EMPLOYEE_VIEW_LEAVE_STATUS: 'employee:view_leave_status',
-  EMPLOYEE_REQUEST_SALARY_ADVANCE: 'employee:request_salary_advance',
-  EMPLOYEE_VIEW_SALARY_ADVANCE_STATUS: 'employee:view_salary_advance_status',
+  // Reporting
+  REPORTS_VIEW_ALL: 'reports:view_all',
+  REPORTS_CREATE: 'reports:create',
+
+  // Workflow Management
+  WORKFLOW_MANAGE: 'workflow:manage',
+
+  // Salary Advance
+  SALARY_ADVANCE_MANAGE: 'salary_advance:manage',
+  SALARY_ADVANCE_APPROVE: 'salary_advance:approve',
+  SALARY_ADVANCE_REQUEST: 'salary_advance:request',
+
+  // Leave Management
+  LEAVE_MANAGE: 'leave:manage',
+  LEAVE_APPROVE: 'leave:approve',
+  LEAVE_REQUEST: 'leave:request',
+
+  // Employee Management
+  EMPLOYEE_MANAGE: 'employee:manage',
+
+  // Performance Management
+  PERFORMANCE_MANAGE: 'performance:manage',
+
+  // Branch Management
+  BRANCH_MANAGE: 'branch:manage',
+
+  // Staff Management
+  STAFF_SCHEDULE: 'staff:schedule',
+  STAFF_COORDINATE: 'staff:coordinate',
+
+  // Profile Management
+  PROFILE_VIEW: 'profile:view',
 };
 
-export const ROLE_PERMISSIONS: { [key: string]: string[] } = {
-  ADMIN: [PERMISSIONS.ADMIN_FULL_ACCESS], // Admins have all permissions
-  HR_MANAGER: [
-    PERMISSIONS.HR_VIEW_EMPLOYEES,
-    PERMISSIONS.HR_MANAGE_EMPLOYEES,
-    PERMISSIONS.HR_ADD_EMPLOYEE,
-    PERMISSIONS.HR_DELETE_EMPLOYEE,
-    PERMISSIONS.HR_EDIT_EMPLOYEE_DETAILS,
-    PERMISSIONS.HR_ASSIGN_EMPLOYEE_TO_BRANCH,
-    PERMISSIONS.HR_MANAGE_TEAM_MEMBERS,
-    PERMISSIONS.HR_VIEW_TEAM_DETAILS,
-    PERMISSIONS.HR_EDIT_TEAM_MEMBER_STATUS,
-    PERMISSIONS.HR_VIEW_PAYROLL,
-    PERMISSIONS.HR_MANAGE_PAYROLL,
-    PERMISSIONS.HR_VIEW_LEAVE,
-    PERMISSIONS.HR_MANAGE_LEAVE,
-    PERMISSIONS.HR_VIEW_PERFORMANCE,
-    PERMISSIONS.HR_MANAGE_PERFORMANCE,
-    PERMISSIONS.HR_MANAGE_PERFORMANCE_REVIEWS,
-    PERMISSIONS.HR_VIEW_PERFORMANCE_REVIEWS,
-    PERMISSIONS.HR_CREATE_PERFORMANCE_REVIEW,
-    PERMISSIONS.HR_VIEW_TRAINING,
-    PERMISSIONS.HR_MANAGE_TRAINING,
-    PERMISSIONS.HR_MANAGE_TRAINING_PROGRAMS,
-    PERMISSIONS.HR_VIEW_TRAINING_PROGRAMS,
-    PERMISSIONS.HR_CREATE_TRAINING_PROGRAM,
-    PERMISSIONS.HR_VIEW_DEPARTMENTS,
-    PERMISSIONS.HR_MANAGE_DEPARTMENTS,
-    PERMISSIONS.HR_CREATE_DEPARTMENT,
-    PERMISSIONS.HR_EDIT_DEPARTMENT,
-    PERMISSIONS.HR_DELETE_DEPARTMENT,
-    PERMISSIONS.HR_VIEW_BRANCHES,
-    PERMISSIONS.HR_MANAGE_BRANCHES,
-    PERMISSIONS.HR_CREATE_BRANCH,
-    PERMISSIONS.HR_EDIT_BRANCH,
-    PERMISSIONS.HR_DELETE_BRANCH,
-    PERMISSIONS.HR_MANAGE_BRANCH_OPERATIONS,
-    PERMISSIONS.HR_VIEW_SALARY_ADVANCES,
-    PERMISSIONS.HR_MANAGE_SALARY_ADVANCES,
-    // HR Managers might also need some employee permissions to view their own data
-    PERMISSIONS.EMPLOYEE_VIEW_PROFILE,
-    PERMISSIONS.EMPLOYEE_VIEW_PAYSLIPS,
-    PERMISSIONS.EMPLOYEE_REQUEST_LEAVE,
-    PERMISSIONS.EMPLOYEE_VIEW_LEAVE_STATUS,
-    PERMISSIONS.EMPLOYEE_REQUEST_SALARY_ADVANCE,
-    PERMISSIONS.EMPLOYEE_VIEW_SALARY_ADVANCE_STATUS,
-  ],
-  OPERATIONS_MANAGER: [
-    PERMISSIONS.OPS_VIEW_EMPLOYEES,
-    PERMISSIONS.OPS_MANAGE_EMPLOYEES,
-    PERMISSIONS.OPS_VIEW_LEAVE_APPROVALS,
-    PERMISSIONS.OPS_APPROVE_LEAVE,
-    PERMISSIONS.OPS_VIEW_SALARY_ADVANCES,
-    PERMISSIONS.OPS_APPROVE_SALARY_ADVANCES,
-    PERMISSIONS.OPS_VIEW_BRANCH_PERFORMANCE,
-    // Operations Managers might also need some employee permissions
-    PERMISSIONS.EMPLOYEE_VIEW_PROFILE,
-    PERMISSIONS.EMPLOYEE_VIEW_PAYSLIPS,
-    PERMISSIONS.EMPLOYEE_REQUEST_LEAVE,
-    PERMISSIONS.EMPLOYEE_VIEW_LEAVE_STATUS,
-    PERMISSIONS.EMPLOYEE_REQUEST_SALARY_ADVANCE,
-    PERMISSIONS.EMPLOYEE_VIEW_SALARY_ADVANCE_STATUS,
-  ],
-  EMPLOYEE: [
-    PERMISSIONS.EMPLOYEE_VIEW_PROFILE,
-    PERMISSIONS.EMPLOYEE_EDIT_PROFILE,
-    PERMISSIONS.EMPLOYEE_VIEW_PAYSLIPS,
-    PERMISSIONS.EMPLOYEE_REQUEST_LEAVE,
-    PERMISSIONS.EMPLOYEE_VIEW_LEAVE_STATUS,
-    PERMISSIONS.EMPLOYEE_REQUEST_SALARY_ADVANCE,
-    PERMISSIONS.EMPLOYEE_VIEW_SALARY_ADVANCE_STATUS,
-  ],
-};
-
-export function getUserPermissions(role: string): string[] {
-  if (role === 'ADMIN') {
-    // Admins implicitly have all permissions, or we can explicitly list them all
-    return Object.values(PERMISSIONS);
-  }
-  return ROLE_PERMISSIONS[role] || [];
-}
+export const ALL_PERMISSIONS = Object.values(PERMISSIONS);

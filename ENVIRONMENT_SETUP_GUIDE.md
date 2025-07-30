@@ -85,7 +85,7 @@ MIN_EMPLOYMENT_TENURE_MONTHS=6
 
 ```env
 # Backend API URL
-VITE_API_BASE_URL=https://charlies-hrms-backend.vercel.app/api
+VITE_API_BASE_URL=https://your-serverless-backend-url/api
 
 # Application environment
 VITE_NODE_ENV=production

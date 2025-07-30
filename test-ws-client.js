@@ -1,7 +1,11 @@
 // Simple Node.js WebSocket client to test backend connection
 const WebSocket = require('ws');
 
-const ws = new WebSocket('wss://charlies-hrms-backend.vercel.app/dashboard-metrics?role=admin');
+const wsBaseUrl = process.env.WS_BASE_URL;
+if (!wsBaseUrl) {
+  throw new Error('WebSocket base URL is not set. Please configure WS_BASE_URL in your environment variables.');
+}
+const ws = new WebSocket(wsBaseUrl + '/dashboard-metrics?role=admin');
 
 ws.on('open', function open() {
   // ...existing code...

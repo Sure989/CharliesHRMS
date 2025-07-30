@@ -1,4 +1,9 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
+import { PrismaClient } from '@prisma/client';
+import bcrypt from 'bcryptjs';
+import { generateToken, generateRefreshToken } from '../../src/utils/jwt';
+
+const prisma = new PrismaClient();
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Set CORS headers for frontend only
@@ -25,26 +30,40 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
 
-    // Simple test response
-    if (email === 'admin@charlieshrms.com' && password === 'password123') {
-      return res.status(200).json({
-        status: 'success',
-        data: {
-          user: { id: '1', email, role: 'ADMIN' },
-          accessToken: 'test-token',
-          refreshToken: 'test-refresh'
-        }
+    const user = await prisma.user.findUnique({ where: { email } });
+
+    if (!user || !bcrypt.compareSync(password, user.passwordHash)) {
+      return res.status(401).json({
+        status: 'error',
+        message: 'Invalid credentials'
       });
     }
 
-    return res.status(401).json({
-      status: 'error',
-      message: 'Invalid credentials'
+    const tokenPayload = {
+      userId: user.id,
+      role: user.role,
+      tenantId: user.tenantId,
+      permissions: user.permissions,
+    };
+
+    const accessToken = generateToken(tokenPayload);
+    const refreshToken = generateRefreshToken(tokenPayload);
+
+    return res.status(200).json({
+      status: 'success',
+      data: {
+        user: { id: user.id, email: user.email, role: user.role, permissions: user.permissions },
+        accessToken,
+        refreshToken,
+      }
     });
   } catch (error) {
+    console.error('Login error:', error);
     return res.status(500).json({
       status: 'error',
       message: 'Server error'
     });
+  } finally {
+    await prisma.$disconnect();
   }
 }
