@@ -126,9 +126,13 @@ const RealTimeDashboard: React.FC<RealTimeDashboardProps> = ({ role }) => {
     setApiLoading(true);
     try {
       const response = await apiClient.get('/dashboard/metrics');
+      console.log('API Response (RealTimeDashboard):', response);
       const data = response.data as { status?: string; data?: any };
-      if (data?.status === 'success') {
+      if (data?.status === 'success' && data.data) {
         setMetricsData(data.data);
+      } else {
+        // Fallback: try to set the whole response if structure is unexpected
+        setMetricsData(data.data ?? response.data ?? null);
       }
     } catch (error) {
       // ...existing code...
@@ -139,19 +143,24 @@ const RealTimeDashboard: React.FC<RealTimeDashboardProps> = ({ role }) => {
 
   // Process WebSocket data to derive metrics
   const processedData = useMemo(() => {
-    const dataSource = metricsData;
+    // Defensive mapping: handle both expected and unexpected backend structures
+    let dataSource = metricsData;
+    // If metricsData is wrapped in a 'data' field, unwrap it
+    if (dataSource && typeof dataSource === 'object' && 'data' in dataSource && Object.keys(dataSource).length === 1) {
+      dataSource = dataSource.data;
+    }
     if (!dataSource) {
       return {
         metrics: null,
         realTimeData: null,
         wsError: null,
-        employees: { // Default structure if no data
+        employees: {
           total: 0, active: 0, inactive: 0, newHires: 0, recentHires: [], departmentDistribution: [], branchDistribution: [],
         },
       };
     }
 
-    // Map the actual WebSocket data structure to expected format
+    // Map the actual backend data structure to expected format
     const metrics: DashboardMetrics = {
       employees: {
         total: dataSource.totalEmployees || 0,
@@ -196,15 +205,14 @@ const RealTimeDashboard: React.FC<RealTimeDashboardProps> = ({ role }) => {
       const employeesArray: Employee[] = metrics.employees;
       const totalEmployees = employeesArray.length;
       const currentDate = new Date();
-      const currentMonth = currentDate.getMonth(); // 0-indexed
+      const currentMonth = currentDate.getMonth();
       const currentYear = currentDate.getFullYear();
 
       let newHiresCount = 0;
       const departmentCounts: Record<string, number> = {};
-      const recentHiresList = employeesArray.slice(0, 5); // Take first 5 as recent hires
+      const recentHiresList = employeesArray.slice(0, 5);
 
       employeesArray.forEach(employee => {
-        // Count new hires
         if (employee.hireDate) {
           try {
             const hireDate = new Date(employee.hireDate);
@@ -215,36 +223,27 @@ const RealTimeDashboard: React.FC<RealTimeDashboardProps> = ({ role }) => {
             console.error("Error parsing hireDate:", employee.hireDate, e);
           }
         }
-
-        // Count department distribution
         if (employee.department) {
           departmentCounts[employee.department] = (departmentCounts[employee.department] || 0) + 1;
         }
       });
 
-      // Calculate department distribution percentages
       const departmentDistributionArray = Object.entries(departmentCounts).map(([department, count]) => ({
         department,
         count,
         percentage: totalEmployees ? (count / totalEmployees) * 100 : 0,
       }));
-
-      // Sort department distribution by count descending
       departmentDistributionArray.sort((a, b) => b.count - a.count);
-
-      // Update the employees property within metrics with processed data
       metrics.employees = {
         total: totalEmployees,
-        active: totalEmployees, // Assuming all are active as no status field is available
+        active: totalEmployees,
         inactive: 0,
         newHires: newHiresCount,
         recentHires: recentHiresList,
         departmentDistribution: departmentDistributionArray,
-        branchDistribution: [], // Not derivable from employee array alone
+        branchDistribution: [],
       };
     } else {
-      // If dataSource.employees is not an array, assume it's already in the object format
-      // or use defaults if it's missing.
       metrics.employees = dataSource.employees ?? {
         total: 0, active: 0, inactive: 0, newHires: 0, recentHires: [], departmentDistribution: [], branchDistribution: [],
       };
@@ -255,7 +254,7 @@ const RealTimeDashboard: React.FC<RealTimeDashboardProps> = ({ role }) => {
       realTimeData: realTimeData,
       wsError: wsError,
     };
-  }, [metricsData]); // Re-calculate when metricsData changes
+  }, [metricsData]);
 
   const { metrics, realTimeData, wsError } = processedData;
   // Use the processed employees data, with a fallback for safety
