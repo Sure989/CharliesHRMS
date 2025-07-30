@@ -8,7 +8,9 @@ const router = Router();
 
 router.get('/', userController.getUsers);
 router.get('/profile', userController.getCurrentUserProfile);
-router.get('/stats', userController.getUserStats);
+import { authenticate, restrictTo } from '../middleware/auth.middleware';
+
+router.get('/stats', authenticate, restrictTo(['ADMIN', 'HR_MANAGER']), userController.getUserStats);
 router.get('/roles', userController.getUserRoles);
 router.get('/departments', userController.getDepartments);
 router.get('/permissions', userController.getPermissions);
