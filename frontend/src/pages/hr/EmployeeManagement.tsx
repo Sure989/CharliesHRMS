@@ -668,16 +668,12 @@ const EmployeeManagement = () => {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end space-x-2">
-                          {canEdit && (
-                            <Button variant="outline" size="sm" className="hover:bg-blue-100" onClick={() => handleEditEmployee(employee)}>
-                              <Edit className="h-4 w-4 text-blue-600" />
-                            </Button>
-                          )}
-                          {canDelete && (
-                            <Button variant="outline" size="sm" className="hover:bg-red-100" onClick={() => handleDeleteEmployee(employee)}>
-                              <Trash2 className="h-4 w-4 text-red-600" />
-                            </Button>
-                          )}
+                          <Button variant="outline" size="sm" className="hover:bg-blue-100" onClick={() => handleEditEmployee(employee)} disabled={!canEdit}>
+                            <Edit className="h-4 w-4 text-blue-600" />
+                          </Button>
+                          <Button variant="outline" size="sm" className="hover:bg-red-100" onClick={() => handleDeleteEmployee(employee)} disabled={!canDelete}>
+                            <Trash2 className="h-4 w-4 text-red-600" />
+                          </Button>
                         </div>
                       </TableCell>
                     </TableRow>
