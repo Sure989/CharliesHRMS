@@ -20,27 +20,7 @@ import { departmentService } from '@/services/api/department.service';
 
 const EmployeeManagement = () => {
   const { toast } = useToast();
-  const { user: rawUser } = useAuth();
-  // Grant all HR manager permissions to any user with role === 'HR_MANAGER' and no permissions set
-  const HR_MANAGER_PERMISSIONS = [
-    'HR_MANAGE_DEPARTMENTS',
-    'HR_VIEW_EMPLOYEES',
-    'HR_MANAGE_EMPLOYEES',
-    'HR_ADD_EMPLOYEE',
-    'HR_DELETE_EMPLOYEE',
-    'HR_EDIT_EMPLOYEE_DETAILS',
-    'HR_ASSIGN_EMPLOYEE_TO_BRANCH',
-    'HR_MANAGE_TEAM_MEMBERS',
-    // Add more as needed
-  ];
-  const currentUser = rawUser && rawUser.role === 'HR_MANAGER'
-    ? {
-        ...rawUser,
-        permissions: (rawUser.permissions && rawUser.permissions.length > 0)
-          ? rawUser.permissions
-          : HR_MANAGER_PERMISSIONS
-      }
-    : rawUser;
+  const { user: currentUser } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
@@ -64,18 +44,13 @@ const EmployeeManagement = () => {
   const canEdit = canEditEmployeeDetails(currentUser);
   const canDelete = canDeleteEmployee(currentUser);
 
-  // Load initial data
+  // Load data
   useEffect(() => {
-    const loadInitialData = async () => {
+    const fetchData = async () => {
+      setLoading(true);
       try {
-        setLoading(true);
-        const [employeesResponse, branchesResponse, departmentsResponse] = await Promise.all([
-          employeeService.getEmployees(),
-          branchService.getAllBranches(),
-          departmentService.getAllDepartments()
-        ]);
-
-        // Handle employees
+        // Fetch employees from the API
+        const employeesResponse = await employeeService.getEmployees();
         if (employeesResponse.status === 'success' && employeesResponse.data) {
           const employeesAsUsers: User[] = employeesResponse.data.map((emp: any) => ({
             id: emp.id,
@@ -86,21 +61,26 @@ const EmployeeManagement = () => {
             role: 'EMPLOYEE',
             branchId: emp.branchId || '',
             departmentId: emp.departmentId || '',
-            branch: branchesResponse.find((b: any) => b.id === emp.branchId),
-            department: departmentsResponse.find((d: any) => d.id === emp.departmentId),
+            branch: typeof emp.branch === 'object' ? emp.branch?.name || '' : emp.branch || '',
+            department: typeof emp.department === 'object' ? emp.department?.name || '' : emp.department || '',
             position: emp.position,
             hireDate: emp.hireDate,
             phone: emp.phone || '',
-            status: emp.status === 'terminated' ? 'inactive' : (emp.status || 'active'),
+            status: emp.status === 'terminated' ? 'inactive' : emp.status,
             permissions: []
           }));
           setEmployees(employeesAsUsers);
         }
-
-        setBranches(branchesResponse || []);
-        setDepartments(departmentsResponse || []);
+        
+        // Fetch branches and departments
+        const [branchesResponse, departmentsResponse] = await Promise.all([
+          branchService.getAllBranches(),
+          departmentService.getAllDepartments()
+        ]);
+        setBranches(branchesResponse);
+        setDepartments(departmentsResponse);
       } catch (error) {
-        console.error('Failed to load initial data:', error);
+        console.error('Failed to fetch data:', error);
         toast({
           title: "Error",
           description: "Failed to load employee data.",
@@ -111,8 +91,8 @@ const EmployeeManagement = () => {
       }
     };
 
-    loadInitialData();
-  }, [toast]);
+    fetchData();
+  }, [toast, currentUser]);
 
   // Employee form state
   const [newEmployee, setNewEmployee] = useState({
@@ -200,12 +180,12 @@ const EmployeeManagement = () => {
             role: 'EMPLOYEE',
             branchId: emp.branchId || '',
             departmentId: emp.departmentId || '',
-            branch: branches.find(b => b.id === emp.branchId),
-            department: departments.find(d => d.id === emp.departmentId),
+            branch: typeof emp.branch === 'object' ? emp.branch?.name || '' : emp.branch || '',
+            department: typeof emp.department === 'object' ? emp.department?.name || '' : emp.department || '',
             position: emp.position,
             hireDate: emp.hireDate,
             phone: emp.phone || '',
-            status: emp.status === 'terminated' ? 'inactive' : (emp.status || 'active'),
+            status: emp.status === 'terminated' ? 'inactive' : emp.status,
             permissions: []
           }));
           setEmployees(employeesAsUsers);
@@ -319,8 +299,8 @@ const EmployeeManagement = () => {
         role: 'EMPLOYEE',
         branchId: newEmployee.branchId,
         departmentId: newEmployee.departmentId,
-        branch: branches.find(b => b.id === newEmployee.branchId),
-        department: departments.find(d => d.id === newEmployee.departmentId),
+        branch: branches.find(b => b.id === newEmployee.branchId) || null,
+        department: departments.find(d => d.id === newEmployee.departmentId) || null,
         position: response.position,
         hireDate: response.hireDate,
         phone: response.phone || '',
@@ -406,8 +386,8 @@ const EmployeeManagement = () => {
               position: response.position,
               branchId: newEmployee.branchId,
               departmentId: newEmployee.departmentId,
-              branch: branches.find(b => b.id === newEmployee.branchId),
-              department: departments.find(d => d.id === newEmployee.departmentId),
+              branch: branches.find(b => b.id === newEmployee.branchId) || emp.branch,
+              department: departments.find(d => d.id === newEmployee.departmentId) || emp.department,
               hireDate: response.hireDate,
             }
           : emp
@@ -467,155 +447,162 @@ const EmployeeManagement = () => {
               className="pl-10 w-64"
             />
           </div>
+          
           <div className="flex items-center space-x-2">
-            <Button 
-              onClick={downloadTemplate}
-              className="bg-green-600 hover:bg-green-700 text-white flex items-center space-x-2"
-            >
-              <Download className="h-4 w-4 text-white" />
-              <span>Download Template</span>
-            </Button>
-            <Dialog open={isImportDialogOpen} onOpenChange={setIsImportDialogOpen}>
-              <DialogTrigger asChild>
-                <Button className="bg-green-600 hover:bg-green-700 text-white flex items-center space-x-2">
-                  <Upload className="h-4 w-4 text-white" />
-                  <span>Import Employees</span>
+            {canAdd && (
+              <>
+                <Button 
+                  onClick={downloadTemplate}
+                  className="bg-green-600 hover:bg-green-700 text-white flex items-center space-x-2"
+                >
+                  <Download className="h-4 w-4 text-white" />
+                  <span>Download Template</span>
                 </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-2xl">
-                <DialogHeader>
-                  <DialogTitle>Import Employees</DialogTitle>
-                  <DialogDescription>
-                    Upload a CSV or Excel file to import multiple employees at once.
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4 py-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="import-file">Select File</Label>
-                    <Input
-                      id="import-file"
-                      type="file"
-                      accept=".csv,.xlsx,.xls"
-                      onChange={handleFileSelect}
-                      disabled={isImporting}
-                    />
-                    <p className="text-sm text-muted-foreground">
-                      Supported formats: CSV, Excel (.xlsx, .xls). Max file size: 10MB.
-                    </p>
-                  </div>
-                  
-                  {importFile && (
-                    <div className="space-y-2">
-                      <Label>Selected File</Label>
-                      <div className="p-3 border rounded-md bg-muted">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-sm font-medium">{importFile.name}</p>
-                            <p className="text-xs text-muted-foreground">
-                              Size: {(importFile.size / 1024).toFixed(2)} KB
-                            </p>
-                          </div>
-                          <FileSpreadsheet className="h-8 w-8 text-muted-foreground" />
-                        </div>
+                
+                <Dialog open={isImportDialogOpen} onOpenChange={setIsImportDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button className="bg-green-600 hover:bg-green-700 text-white flex items-center space-x-2">
+                      <Upload className="h-4 w-4 text-white" />
+                      <span>Import Employees</span>
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-2xl">
+                    <DialogHeader>
+                      <DialogTitle>Import Employees</DialogTitle>
+                      <DialogDescription>
+                        Upload a CSV or Excel file to import multiple employees at once.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="import-file">Select File</Label>
+                        <Input
+                          id="import-file"
+                          type="file"
+                          accept=".csv,.xlsx,.xls"
+                          onChange={handleFileSelect}
+                          disabled={isImporting}
+                        />
+                        <p className="text-sm text-muted-foreground">
+                          Supported formats: CSV, Excel (.xlsx, .xls). Max file size: 10MB.
+                        </p>
                       </div>
-                    </div>
-                  )}
-
-                  {importResults && (
-                    <div className="space-y-2">
-                      <Label>Import Results</Label>
-                      <div className="p-3 border rounded-md">
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-sm font-medium">Summary:</span>
-                        </div>
-                        <div className="grid grid-cols-2 gap-4 text-sm">
-                          <div className="flex justify-between">
-                            <span>Successful:</span>
-                            <Badge variant="default" className="bg-green-100 text-green-800">
-                              {importResults.success}
-                            </Badge>
-                          </div>
-                          <div className="flex justify-between">
-                            <span>Failed:</span>
-                            <Badge variant="destructive" className="bg-red-100 text-red-800">
-                              {importResults.failed}
-                            </Badge>
-                          </div>
-                        </div>
-                        
-                        {importResults.errors.length > 0 && (
-                          <div className="mt-4">
-                            <p className="text-sm font-medium mb-2">Errors:</p>
-                            <div className="max-h-32 overflow-y-auto">
-                              {importResults.errors.slice(0, 5).map((error, index) => (
-                                <Alert key={index} className="mb-2">
-                                  <AlertTriangle className="h-4 w-4" />
-                                  <AlertDescription className="text-xs">
-                                    Row {error.row}: {error.error}
-                                  </AlertDescription>
-                                </Alert>
-                              ))}
-                              {importResults.errors.length > 5 && (
+                      
+                      {importFile && (
+                        <div className="space-y-2">
+                          <Label>Selected File</Label>
+                          <div className="p-3 border rounded-md bg-muted">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="text-sm font-medium">{importFile.name}</p>
                                 <p className="text-xs text-muted-foreground">
-                                  ... and {importResults.errors.length - 5} more errors
+                                  Size: {(importFile.size / 1024).toFixed(2)} KB
                                 </p>
-                              )}
+                              </div>
+                              <FileSpreadsheet className="h-8 w-8 text-muted-foreground" />
                             </div>
                           </div>
-                        )}
+                        </div>
+                      )}
+
+                      {importResults && (
+                        <div className="space-y-2">
+                          <Label>Import Results</Label>
+                          <div className="p-3 border rounded-md">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-sm font-medium">Summary:</span>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4 text-sm">
+                              <div className="flex justify-between">
+                                <span>Successful:</span>
+                                <Badge variant="default" className="bg-green-100 text-green-800">
+                                  {importResults.success}
+                                </Badge>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Failed:</span>
+                                <Badge variant="destructive" className="bg-red-100 text-red-800">
+                                  {importResults.failed}
+                                </Badge>
+                              </div>
+                            </div>
+                            
+                            {importResults.errors.length > 0 && (
+                              <div className="mt-4">
+                                <p className="text-sm font-medium mb-2">Errors:</p>
+                                <div className="max-h-32 overflow-y-auto">
+                                  {importResults.errors.slice(0, 5).map((error, index) => (
+                                    <Alert key={index} className="mb-2">
+                                      <AlertTriangle className="h-4 w-4" />
+                                      <AlertDescription className="text-xs">
+                                        Row {error.row}: {error.error}
+                                      </AlertDescription>
+                                    </Alert>
+                                  ))}
+                                  {importResults.errors.length > 5 && (
+                                    <p className="text-xs text-muted-foreground">
+                                      ... and {importResults.errors.length - 5} more errors
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      <Alert>
+                        <Info className="h-4 w-4" />
+                        <AlertDescription>
+                          <strong>Required columns:</strong> employeeId, firstName, lastName, email<br />
+                          <strong>Optional columns:</strong> phone, position, department, branch, hireDate<br />
+                          Download the template file to see the expected format.
+                        </AlertDescription>
+                      </Alert>
+                      
+                      <div className="flex justify-end space-x-2">
+                        <Button 
+                          variant="outline" 
+                          onClick={() => {
+                            setIsImportDialogOpen(false);
+                            setImportFile(null);
+                            setImportResults(null);
+                          }}
+                          disabled={isImporting}
+                        >
+                          Cancel
+                        </Button>
+                        <Button 
+                          onClick={handleImportEmployees} 
+                          disabled={!importFile || isImporting}
+                          className="bg-green-600 hover:bg-green-700 text-white"
+                        >
+                          {isImporting ? (
+                            <>
+                              <Upload className="h-4 w-4 mr-2 animate-spin" />
+                              Importing...
+                            </>
+                          ) : (
+                            <>
+                              <Upload className="h-4 w-4 mr-2" />
+                              Import Employees
+                            </>
+                          )}
+                        </Button>
                       </div>
                     </div>
-                  )}
-
-                  <Alert>
-                    <Info className="h-4 w-4" />
-                    <AlertDescription>
-                      <strong>Required columns:</strong> employeeId, firstName, lastName, email<br />
-                      <strong>Optional columns:</strong> phone, position, department, branch, hireDate<br />
-                      Download the template file to see the expected format.
-                    </AlertDescription>
-                  </Alert>
-                  
-                  <div className="flex justify-end space-x-2">
-                    <Button 
-                      variant="outline" 
-                      onClick={() => {
-                        setIsImportDialogOpen(false);
-                        setImportFile(null);
-                        setImportResults(null);
-                      }}
-                      disabled={isImporting}
-                    >
-                      Cancel
-                    </Button>
-                    <Button 
-                      onClick={handleImportEmployees} 
-                      disabled={!importFile || isImporting}
-                      className="bg-green-600 hover:bg-green-700 text-white"
-                    >
-                      {isImporting ? (
-                        <>
-                          <Upload className="h-4 w-4 mr-2 animate-spin" />
-                          Importing...
-                        </>
-                      ) : (
-                        <>
-                          <Upload className="h-4 w-4 mr-2" />
-                          Import Employees
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                </div>
-              </DialogContent>
-            </Dialog>
-            <Button 
-              onClick={() => setIsAddDialogOpen(true)}
-              className="bg-green-600 hover:bg-green-700 text-white flex items-center space-x-2"
-            >
-              <Plus className="h-4 w-4 text-white" />
-              <span>Add Employee</span>
-            </Button>
+                  </DialogContent>
+                </Dialog>
+                
+                <Button 
+                  onClick={() => setIsAddDialogOpen(true)}
+                  className="bg-green-600 hover:bg-green-700 text-white flex items-center space-x-2"
+                >
+                  <Plus className="h-4 w-4 text-white" />
+                  <span>Add Employee</span>
+                </Button>
+              </>
+            )}
           </div>
         </div>
 
@@ -658,8 +645,8 @@ const EmployeeManagement = () => {
                         </div>
                       </TableCell>
                       <TableCell>{employee.email}</TableCell>
-                      <TableCell>{employee.department?.name || 'N/A'}</TableCell>
-                      <TableCell>{employee.branch?.name || 'N/A'}</TableCell>
+                      <TableCell>{typeof employee.department === 'string' ? (employee.department || 'N/A') : (employee.department?.name || 'N/A')}</TableCell>
+                      <TableCell>{typeof employee.branch === 'string' ? (employee.branch || 'N/A') : (employee.branch?.name || 'N/A')}</TableCell>
                       <TableCell>{employee.position || 'N/A'}</TableCell>
                       <TableCell>
                         <Badge variant={employee.status === 'active' ? 'default' : 'secondary'}>
@@ -668,12 +655,26 @@ const EmployeeManagement = () => {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end space-x-2">
-                          <Button variant="outline" size="sm" className="hover:bg-blue-100" onClick={() => handleEditEmployee(employee)} disabled={!canEdit}>
-                            <Edit className="h-4 w-4 text-blue-600" />
-                          </Button>
-                          <Button variant="outline" size="sm" className="hover:bg-red-100" onClick={() => handleDeleteEmployee(employee)} disabled={!canDelete}>
-                            <Trash2 className="h-4 w-4 text-red-600" />
-                          </Button>
+                          {canEdit && (
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="hover:bg-blue-100"
+                              onClick={() => handleEditEmployee(employee)}
+                            >
+                              <Edit className="h-4 w-4 text-blue-600" />
+                            </Button>
+                          )}
+                          {canDelete && (
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="hover:bg-red-100"
+                              onClick={() => handleDeleteEmployee(employee)}
+                            >
+                              <Trash2 className="h-4 w-4 text-red-600" />
+                            </Button>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>
