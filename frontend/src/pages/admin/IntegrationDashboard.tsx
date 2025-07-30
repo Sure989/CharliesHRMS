@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useWebSocket } from '@/hooks/useWebSocket';
-import { getDashboardMetricsWebSocketUrl } from '@/services/api/websocket.utils';
+// Removed WebSocket import
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -67,13 +66,15 @@ const IntegrationDashboard = () => {
   const [selectedIntegration, setSelectedIntegration] = useState<string | null>(null);
   const [isImporting, setIsImporting] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
-  const [wsData, wsConnected] = useWebSocket<any>(getDashboardMetricsWebSocketUrl('integration'));
   
+  // WebSocket removed. Use polling via loadDashboardData only.
   useEffect(() => {
-    if (wsData) {
+    const interval = setInterval(() => {
       loadDashboardData();
-    }
-  }, [wsData, loadDashboardData]);
+    }, 30000); // Polling every 30 seconds
+
+    return () => clearInterval(interval);
+  }, [loadDashboardData]);
 
   // Handle integration toggle with confirmation for disabling
   const handleToggleIntegration = (integrationId: string, enabled: boolean): void => {
