@@ -97,6 +97,7 @@ model User {
   employee           Employee?     @relation(fields: [employeeId], references: [id])
   tenant             Tenant        @relation(fields: [tenantId], references: [id])
   notifications      Notification[]
+  permissions        String[]      @default([])
 
   @@index([email])
   @@index([tenantId])

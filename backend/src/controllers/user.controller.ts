@@ -141,38 +141,29 @@ export const updateUserPermissions = async (req: Request, res: Response, next: N
       return res.status(404).json({ status: 'error', message: 'User not found' });
     }
 
-    // Update permissions (store as JSON in a text field or handle as needed)
-    // Since permissions might not be in schema, we'll store in a metadata field or handle gracefully
-    try {
-      const updatedUser = await prisma.user.update({
-        where: { id },
-        data: { 
-          // If permissions field exists in schema, use it; otherwise store in metadata
-          permissions: permissions
-        },
-        select: {
-          id: true,
-          firstName: true,
-          lastName: true,
-          email: true,
-          role: true,
-          status: true,
-          permissions: true,
-          createdAt: true,
-          updatedAt: true
-        }
-      });
-
-      return res.status(200).json({ status: 'success', data: { user: updatedUser } });
-    } catch (schemaError) {
-      // If permissions field doesn't exist in schema, return success but note limitation
-      console.warn('Permissions field not available in schema:', schemaError);
-      return res.status(200).json({ 
-        status: 'success', 
-        message: 'User permissions updated (stored in role-based system)',
-        data: { user: existingUser }
-      });
+    // If user is admin, assign all permissions
+    let newPermissions = permissions;
+    if (existingUser.role === 'ADMIN') {
+      // Import all permissions from backend/src/utils/permissions
+      const { PERMISSIONS } = require('../utils/permissions');
+      newPermissions = Object.values(PERMISSIONS);
     }
+    const updatedUser = await prisma.user.update({
+      where: { id },
+      data: { permissions: newPermissions },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        role: true,
+        status: true,
+        permissions: true,
+        createdAt: true,
+        updatedAt: true
+      }
+    });
+    return res.status(200).json({ status: 'success', data: { user: updatedUser } });
   } catch (error) {
     console.error('Update user permissions error:', error);
     return res.status(500).json({ status: 'error', message: 'Failed to update user permissions' });

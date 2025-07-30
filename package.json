@@ -10,6 +10,7 @@
     "start": "npm run start --prefix backend"
   },
   "dependencies": {
+    "jsonwebtoken": "^9.0.2",
     "ws": "^8.18.3"
   },
   "devDependencies": {
