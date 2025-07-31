@@ -41,17 +41,20 @@ const EmployeeManagement = () => {
   } | null>(null);
 
   // Helper to map department and branch objects for all employees
-  const mapEmployeeRelations = (employeesList, branchesList, departmentsList) => {
+  // Create lookup maps for departments and branches
+  const departmentMap = Object.fromEntries(departments.map(dept => [dept.id, dept]));
+  const branchMap = Object.fromEntries(branches.map(branch => [branch.id, branch]));
+  // Helper to map department and branch objects for all employees
+  const mapEmployeeRelations = (employeesList) => {
     return employeesList.map(emp => {
-      // Support alternate property names for IDs
       const branchId = emp.branchId || emp.branch_id || '';
       const departmentId = emp.departmentId || emp.department_id || '';
       return {
         ...emp,
         branchId,
         departmentId,
-        branch: branchesList.find(b => b.id === branchId) || null,
-        department: departmentsList.find(d => d.id === departmentId) || null,
+        branch: branchMap[branchId] || null,
+        department: departmentMap[departmentId] || null,
       };
     });
   };
@@ -98,7 +101,7 @@ const EmployeeManagement = () => {
         setBranches(branchesResponse || []);
         setDepartments(departmentsResponse || []);
         // Only set employees after branches and departments are set
-        const mappedEmployees = mapEmployeeRelations(employeesAsUsers, branchesResponse || [], departmentsResponse || []);
+        const mappedEmployees = mapEmployeeRelations(employeesAsUsers);
         // Debug: log mapped employees with relations
         console.log('Mapped employees with relations:', mappedEmployees);
         setEmployees(mappedEmployees);
@@ -198,6 +201,7 @@ const EmployeeManagement = () => {
         // Refresh the employee list
         const employeesResponse = await employeeService.getEmployees();
         if (employeesResponse.status === 'success' && employeesResponse.data) {
+          // Always map relations after fetch
           const employeesAsUsers: User[] = employeesResponse.data.map((emp: any) => ({
             id: emp.id,
             employeeId: emp.employeeNumber || emp.employeeId,
@@ -207,14 +211,12 @@ const EmployeeManagement = () => {
             role: 'EMPLOYEE',
             branchId: emp.branchId || '',
             departmentId: emp.departmentId || '',
-            branch: branches.find(b => b.id === emp.branchId),
-            department: departments.find(d => d.id === emp.departmentId),
             position: emp.position,
             hireDate: emp.hireDate,
             phone: emp.phone || '',
             status: emp.status === 'terminated' ? 'inactive' : (emp.status || 'active')
           }));
-          setEmployees(employeesAsUsers);
+          setEmployees(mapEmployeeRelations(employeesAsUsers));
         }
       } else {
         toast({
@@ -325,16 +327,13 @@ const EmployeeManagement = () => {
         role: 'EMPLOYEE',
         branchId: newEmployee.branchId,
         departmentId: newEmployee.departmentId,
-        branch: branches.find(b => b.id === newEmployee.branchId),
-        department: departments.find(d => d.id === newEmployee.departmentId),
         position: response.position,
         hireDate: response.hireDate,
         phone: response.phone || '',
         status: response.status === 'terminated' ? 'inactive' : (response.status || 'active')
       };
-      
       // Always map relations after adding
-      setEmployees(prev => mapEmployeeRelations([...prev, newUser], branches, departments));
+      setEmployees(prev => mapEmployeeRelations([...prev, newUser]));
       setNewEmployee({
         employeeId: '',
         firstName: '',
@@ -418,7 +417,7 @@ const EmployeeManagement = () => {
               }
             : emp
         );
-        return mapEmployeeRelations(updated, branches, departments);
+        return mapEmployeeRelations(updated);
       });
 
       setIsEditDialogOpen(false);
@@ -662,6 +661,9 @@ const EmployeeManagement = () => {
                     console.log('Employee:', employee);
                     console.log('Department:', employee.department, 'DepartmentId:', employee.departmentId);
                     console.log('Branch:', employee.branch, 'BranchId:', employee.branchId);
+                    // Use lookup maps for robust rendering
+                    const departmentName = employee.department?.name || departmentMap[employee.departmentId]?.name || 'N/A';
+                    const branchName = employee.branch?.name || branchMap[employee.branchId]?.name || 'N/A';
                     return (
                       <TableRow key={employee.id}>
                         <TableCell className="font-medium">
@@ -671,12 +673,8 @@ const EmployeeManagement = () => {
                           </div>
                         </TableCell>
                         <TableCell>{employee.email}</TableCell>
-                        <TableCell>{
-                          employee.department?.name || 'N/A'
-                        }</TableCell>
-                        <TableCell>{
-                          employee.branch?.name || employee.branchName || 'N/A'
-                        }</TableCell>
+                        <TableCell>{departmentName}</TableCell>
+                        <TableCell>{branchName}</TableCell>
                         <TableCell>{employee.position || 'N/A'}</TableCell>
                         <TableCell>
                           <Badge variant={employee.status === 'active' ? 'default' : 'secondary'}>
