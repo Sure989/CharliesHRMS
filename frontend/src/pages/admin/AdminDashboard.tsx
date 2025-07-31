@@ -118,24 +118,13 @@ const AdminDashboard = () => {
               setIsLoading(true);
               (async () => {
                 try {
-                  const [usersResponse, departments, branches, systemStatusData, activitiesData, maintenanceData] = await Promise.all([
-                    userService.getUsers().catch(() => ({ data: [] })),
-                    departmentService.getAllDepartments().catch(() => []),
-                    branchService.getAllBranches().catch(() => []),
+                  const [metricsData, systemStatusData, activitiesData, maintenanceData] = await Promise.all([
+                    adminService.getDashboardMetrics().catch(() => null),
                     adminService.getSystemStatus().catch(() => null),
                     adminService.getSystemActivities(10).catch(() => []),
                     adminService.getMaintenanceInfo().catch(() => null)
                   ]);
-                  const users = usersResponse.data || [];
-                  setMetrics({
-                    totalUsers: users.length,
-                    activeUsers: users.filter(u => u.status === 'active').length,
-                    totalDepartments: departments.length,
-                    totalBranches: branches.length,
-                    systemUptime: maintenanceData?.systemUptime || '99.8%',
-                    avgResponseTime: '120ms',
-                    storageUsed: 68
-                  });
+                  if (metricsData) setMetrics(metricsData);
                   if (systemStatusData) setSystemStatus(systemStatusData);
                   setRecentActivities(activitiesData);
                   setMaintenanceInfo(maintenanceData);

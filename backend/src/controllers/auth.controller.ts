@@ -22,41 +22,6 @@ export const login = async (req: Request, res: Response) => {
       });
     }
 
-    // Mock login when database is down
-    if (email === 'admin@charlieshrms.com' && password === 'password123') {
-      const mockUser = {
-        id: '1',
-        email: 'admin@charlieshrms.com',
-        firstName: 'Admin',
-        lastName: 'User',
-        role: 'ADMIN',
-        tenantId: '00000000-0000-0000-0000-000000000000',
-        employeeId: null,
-        branchId: null,
-        branch: null,
-        permissions: ['admin:full_access']
-      };
-      
-      const tokenPayload: TokenPayload = {
-        userId: mockUser.id,
-        role: mockUser.role,
-        tenantId: mockUser.tenantId,
-        permissions: mockUser.permissions,
-      };
-      
-      const accessToken = generateToken(tokenPayload);
-      const refreshToken = generateRefreshToken(tokenPayload);
-      
-      return res.status(200).json({
-        status: 'success',
-        message: 'Login successful (mock)',
-        data: {
-          user: mockUser,
-          accessToken,
-          refreshToken,
-        },
-      });
-    }
 
     // Find user by email
     // If no tenantId is provided, find user by email only
@@ -93,11 +58,10 @@ export const login = async (req: Request, res: Response) => {
     }
 
     // Create token payload
-    const tenantIdForToken = user.tenantId || "00000000-0000-0000-0000-000000000000";
     const tokenPayload: TokenPayload = {
       userId: user.id,
       role: user.role,
-      tenantId: tenantIdForToken,
+      tenantId: user.tenantId || tenantId,
       permissions: user.permissions,
     };
 
@@ -150,7 +114,7 @@ export const login = async (req: Request, res: Response) => {
           firstName: user.firstName,
           lastName: user.lastName,
           role: user.role,
-          tenantId: tenantIdForToken,
+          tenantId: user.tenantId || tenantId,
           employeeId: user.employeeId,
           branchId,
           branch,
@@ -158,6 +122,7 @@ export const login = async (req: Request, res: Response) => {
         },
         accessToken,
         refreshToken,
+        expiresAt,
       },
     });
   } catch (error) {

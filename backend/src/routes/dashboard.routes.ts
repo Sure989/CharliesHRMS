@@ -5,8 +5,8 @@ import { authenticate } from '../middleware/auth.middleware';
 
 const router = Router();
 
-// Temporarily disable auth for testing
-// router.use(authenticate);
+// Enable authentication middleware for all dashboard routes
+router.use(authenticate);
 
 /**
  * @route GET /api/dashboard/metrics

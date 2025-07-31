@@ -344,6 +344,11 @@ export async function getDashboardMetrics(tenantId: string = 'default'): Promise
     }
   });
 
+  // Mock data for system metrics
+  const systemUptime = '99.9%';
+  const avgResponseTime = '150ms';
+  const storageUsed = 75;
+
   const totalAdvancesCount = await prisma.salaryAdvanceRequest.count({
     where: { tenantId }
   });
@@ -466,6 +471,9 @@ export async function getDashboardMetrics(tenantId: string = 'default'): Promise
       totalDaysUsed,
       utilizationRate,
     },
+    systemUptime,
+    avgResponseTime,
+    storageUsed,
   };
 }
 
