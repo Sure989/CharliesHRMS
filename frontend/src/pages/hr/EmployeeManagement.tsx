@@ -649,8 +649,16 @@ const EmployeeManagement = () => {
                         </div>
                       </TableCell>
                       <TableCell>{employee.email}</TableCell>
-                      <TableCell>{employee.department?.name || 'N/A'}</TableCell>
-                      <TableCell>{employee.branch?.name || 'N/A'}</TableCell>
+                      <TableCell>{
+                        employee.department?.name ||
+                        departments.find(d => d.id === employee.departmentId)?.name ||
+                        'N/A'
+                      }</TableCell>
+                      <TableCell>{
+                        employee.branch?.name ||
+                        branches.find(b => b.id === employee.branchId)?.name ||
+                        'N/A'
+                      }</TableCell>
                       <TableCell>{employee.position || 'N/A'}</TableCell>
                       <TableCell>
                         <Badge variant={employee.status === 'active' ? 'default' : 'secondary'}>
