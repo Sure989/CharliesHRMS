@@ -64,6 +64,11 @@ const EmployeeManagement = () => {
           departmentService.getAllDepartments()
         ]);
 
+        // Debug: log raw API responses
+        console.log('Raw employeesResponse:', employeesResponse);
+        console.log('Raw branchesResponse:', branchesResponse);
+        console.log('Raw departmentsResponse:', departmentsResponse);
+
         let employeesAsUsers: User[] = [];
         if (employeesResponse.status === 'success' && employeesResponse.data) {
           employeesAsUsers = employeesResponse.data.map((emp: any) => ({
@@ -80,11 +85,16 @@ const EmployeeManagement = () => {
             phone: emp.phone || '',
             status: emp.status === 'terminated' ? 'inactive' : (emp.status || 'active')
           }));
+          // Debug: log mapped employeesAsUsers
+          console.log('Mapped employeesAsUsers:', employeesAsUsers);
         }
         setBranches(branchesResponse || []);
         setDepartments(departmentsResponse || []);
         // Only set employees after branches and departments are set
-        setEmployees(mapEmployeeRelations(employeesAsUsers, branchesResponse || [], departmentsResponse || []));
+        const mappedEmployees = mapEmployeeRelations(employeesAsUsers, branchesResponse || [], departmentsResponse || []);
+        // Debug: log mapped employees with relations
+        console.log('Mapped employees with relations:', mappedEmployees);
+        setEmployees(mappedEmployees);
       } catch (error) {
         console.error('Failed to load initial data:', error);
         toast({
