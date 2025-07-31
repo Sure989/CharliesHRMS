@@ -72,7 +72,7 @@ export interface DashboardMetrics {
 /**
  * Get dashboard metrics for overview
  */
-export async function getDashboardMetrics(tenantId: string = 'default'): Promise<any> {
+export async function getDashboardMetrics(tenantId: string = 'default', branchId?: string): Promise<any> {
   // ...existing code...
   
   // If tenantId is 'default', get the first available tenant
@@ -88,6 +88,28 @@ export async function getDashboardMetrics(tenantId: string = 'default'): Promise
   const previousMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1);
   const currentYear = currentDate.getFullYear();
 
+  const leaveWhereClause: any = {
+    tenantId,
+    status: 'PENDING',
+  };
+
+  if (branchId) {
+    leaveWhereClause.employee = {
+      branchId,
+    };
+  }
+
+  const salaryAdvanceWhereClause: any = {
+    tenantId,
+    status: { in: ['PENDING', 'FORWARDEDTOHR'] },
+  };
+
+  if (branchId) {
+    salaryAdvanceWhereClause.employee = {
+      branchId,
+    };
+  }
+
   // --- Real data (existing) ---
   // ...existing code...
   const totalEmployees = await prisma.employee.count({ where: tenantId ? { tenantId } : {} });
@@ -98,7 +120,7 @@ export async function getDashboardMetrics(tenantId: string = 'default'): Promise
   // ...existing code...
   const totalBranches = await prisma.branch.count({ where: tenantId ? { tenantId, status: 'ACTIVE' } : { status: 'ACTIVE' } });
   // ...existing code...
-  const pendingLeaveRequests = await prisma.leaveRequest.count({ where: tenantId ? { tenantId, status: 'PENDING' } : { status: 'PENDING' } });
+  const pendingLeaveRequests = await prisma.leaveRequest.count({ where: leaveWhereClause });
   // ...existing code...
   const upcomingReviews = await prisma.performanceReview.count({ where: tenantId ? { tenantId, status: { in: ['DRAFT', 'IN_PROGRESS'] } } : { status: { in: ['DRAFT', 'IN_PROGRESS'] } } });
   // ...existing code...
@@ -119,7 +141,7 @@ export async function getDashboardMetrics(tenantId: string = 'default'): Promise
   }));
   const newHires = await prisma.employee.count({ where: tenantId ? { tenantId, hireDate: { gte: currentMonth } } : { hireDate: { gte: currentMonth } } });
   // ...existing code...
-  const pendingSalaryAdvances = await prisma.salaryAdvanceRequest.count({ where: tenantId ? { tenantId, status: { in: ['PENDING', 'FORWARDEDTOHR'] } } : { status: { in: ['PENDING', 'FORWARDEDTOHR'] } } });
+  const pendingSalaryAdvances = await prisma.salaryAdvanceRequest.count({ where: salaryAdvanceWhereClause });
   // ...existing code...
   const approvedSalaryAdvancesThisMonth = await prisma.salaryAdvanceRequest.count({ where: tenantId ? { tenantId, status: 'APPROVED', createdAt: { gte: currentMonth } } : { status: 'APPROVED', createdAt: { gte: currentMonth } } });
   const totalOutstandingSalaryAdvances = await prisma.salaryAdvanceRequest.aggregate({ where: tenantId ? { tenantId, status: 'APPROVED' } : { status: 'APPROVED' }, _sum: { outstandingBalance: true } });

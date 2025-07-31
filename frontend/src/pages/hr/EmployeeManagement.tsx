@@ -64,9 +64,9 @@ const EmployeeManagement = () => {
           departmentService.getAllDepartments()
         ]);
 
-        // Handle employees
+        let employeesAsUsers: User[] = [];
         if (employeesResponse.status === 'success' && employeesResponse.data) {
-          const employeesAsUsers: User[] = employeesResponse.data.map((emp: any) => ({
+          employeesAsUsers = employeesResponse.data.map((emp: any) => ({
             id: emp.id,
             employeeId: emp.employeeNumber || emp.employeeId,
             firstName: emp.firstName,
@@ -75,18 +75,16 @@ const EmployeeManagement = () => {
             role: 'EMPLOYEE',
             branchId: emp.branchId || '',
             departmentId: emp.departmentId || '',
-            branch: branchesResponse.find((b: any) => b.id === emp.branchId),
-            department: departmentsResponse.find((d: any) => d.id === emp.departmentId),
             position: emp.position,
             hireDate: emp.hireDate,
             phone: emp.phone || '',
             status: emp.status === 'terminated' ? 'inactive' : (emp.status || 'active')
           }));
-          setEmployees(employeesAsUsers);
         }
-
         setBranches(branchesResponse || []);
         setDepartments(departmentsResponse || []);
+        // Only set employees after branches and departments are set
+        setEmployees(mapEmployeeRelations(employeesAsUsers, branchesResponse || [], departmentsResponse || []));
       } catch (error) {
         console.error('Failed to load initial data:', error);
         toast({

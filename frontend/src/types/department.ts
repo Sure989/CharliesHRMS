@@ -8,4 +8,6 @@ export interface Department {
   createdAt: string;
   updatedAt: string;
   tenantId: string;
+  description?: string;
+  employees?: any[];
 }

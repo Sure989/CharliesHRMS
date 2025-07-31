@@ -265,7 +265,7 @@ const BranchManagement = () => {
                     <TableRow key={branch.id}>
                       <TableCell className="font-medium">{branch.name}</TableCell>
                       <TableCell>{branch.location || 'N/A'}</TableCell>
-                      <TableCell>{department ? department.name : 'N/A'}</TableCell>
+                  <TableCell>{department ? department.name : 'N/A'}</TableCell>
                       <TableCell>{manager ? `${manager.firstName} ${manager.lastName}` : 'None'}</TableCell>
                       <TableCell>
                         <Badge variant={branch.status === 'ACTIVE' ? 'default' : 'secondary'}>

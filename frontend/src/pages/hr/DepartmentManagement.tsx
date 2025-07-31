@@ -108,52 +108,29 @@ const DepartmentManagement = () => {
     console.log('Employees List:', employeesList);
 
     if (!usersList || !employeesList) {
-      console.log('Missing data - returning empty options');
       return [];
     }
-
     const options: Array<{userId: string; employeeName: string; source: string}> = [];
-
-    // Strategy 1: Users with linked employees
     usersList.forEach((user: User) => {
+      let name = '';
       if (user.employeeId) {
         const emp = employeesList.find((e) => e.id === user.employeeId);
         if (emp && emp.firstName && emp.lastName) {
-          options.push({
-            userId: user.id,
-            employeeName: `${emp.firstName} ${emp.lastName}`,
-            source: 'user-employee-link'
-          });
+          name = `${emp.firstName} ${emp.lastName}`;
         }
       }
+      if (!name && user.firstName && user.lastName) {
+        name = `${user.firstName} ${user.lastName}`;
+      }
+      if (!name) {
+        name = user.email;
+      }
+      options.push({
+        userId: user.id,
+        employeeName: name,
+        source: 'auto'
+      });
     });
-
-    // Strategy 2: Users with names (fallback)
-    if (options.length === 0) {
-      usersList.forEach((user: User) => {
-        if (user.firstName && user.lastName) {
-          options.push({
-            userId: user.id,
-            employeeName: `${user.firstName} ${user.lastName}`,
-            source: 'user-direct'
-          });
-        }
-      });
-    }
-
-    // Strategy 3: All users regardless of names (last resort)
-    if (options.length === 0) {
-      usersList.forEach((user: User) => {
-        const name = [user.firstName, user.lastName].filter(Boolean).join(' ') || user.email;
-        options.push({
-          userId: user.id,
-          employeeName: name,
-          source: 'user-fallback'
-        });
-      });
-    }
-
-    console.log('Final manager options:', options);
     return options;
   }, [usersList, employeesList, usersData]);
 
@@ -390,11 +367,11 @@ const DepartmentManagement = () => {
                             : department.description 
                           : 'No description'}
                       </TableCell>
-                      <TableCell>
-                        {manager 
-                          ? `${manager.firstName} ${manager.lastName}`
-                          : 'None'}
-                      </TableCell>
+                  <TableCell>
+                    {manager 
+                      ? [manager.firstName, manager.lastName].filter(Boolean).join(' ') || manager.email
+                      : 'None'}
+                  </TableCell>
                       <TableCell>
                         {department.employees?.length || 0}
                       </TableCell>

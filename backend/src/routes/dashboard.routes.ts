@@ -21,8 +21,9 @@ router.get('/metrics', async (req, res) => {
     
     // Use tenantId if available, otherwise use 'default' or null for testing
     const tenantId = req.tenantId || 'default';
+    const branchId = req.query.branchId as string | undefined;
     
-    const metrics = await getDashboardMetrics(tenantId);
+    const metrics = await getDashboardMetrics(tenantId, branchId);
     console.log('[DEBUG] Metrics fetched successfully:', Object.keys(metrics));
     
     return res.status(200).json({
