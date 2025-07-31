@@ -42,11 +42,18 @@ const EmployeeManagement = () => {
 
   // Helper to map department and branch objects for all employees
   const mapEmployeeRelations = (employeesList, branchesList, departmentsList) => {
-    return employeesList.map(emp => ({
-      ...emp,
-      branch: branchesList.find(b => b.id === emp.branchId) || null,
-      department: departmentsList.find(d => d.id === emp.departmentId) || null,
-    }));
+    return employeesList.map(emp => {
+      // Support alternate property names for IDs
+      const branchId = emp.branchId || emp.branch_id || '';
+      const departmentId = emp.departmentId || emp.department_id || '';
+      return {
+        ...emp,
+        branchId,
+        departmentId,
+        branch: branchesList.find(b => b.id === branchId) || null,
+        department: departmentsList.find(d => d.id === departmentId) || null,
+      };
+    });
   };
   // Permission checks
   const canAdd = canAddEmployee(currentUser);
@@ -665,7 +672,7 @@ const EmployeeManagement = () => {
                         </TableCell>
                         <TableCell>{employee.email}</TableCell>
                         <TableCell>{
-                          employee.department?.name || employee.departmentName || 'N/A'
+                          employee.department?.name || 'N/A'
                         }</TableCell>
                         <TableCell>{
                           employee.branch?.name || employee.branchName || 'N/A'
