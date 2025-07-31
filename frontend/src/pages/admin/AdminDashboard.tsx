@@ -37,9 +37,9 @@ const AdminDashboard = () => {
     activeUsers: 0,
     totalDepartments: 0,
     totalBranches: 0,
-    systemUptime: '',
-    avgResponseTime: '',
-    storageUsed: 0
+    systemUptime: '99.8%',
+    avgResponseTime: '120ms',
+    storageUsed: 68
   });
 
   // Real activities state
@@ -52,17 +52,7 @@ const AdminDashboard = () => {
   usePolling(async () => {
     try {
       const response = await adminService.getDashboardMetrics();
-      if (response && response.status === 'success' && response.data) {
-        setMetrics({
-          totalUsers: response.data.totalUsers ?? 0,
-          activeUsers: response.data.activeUsers ?? 0,
-          totalDepartments: response.data.totalDepartments ?? 0,
-          totalBranches: response.data.totalBranches ?? 0,
-          systemUptime: response.data.systemUptime ?? '99.8%',
-          avgResponseTime: response.data.responseTime ?? '120ms',
-          storageUsed: typeof response.data.storageUsed === 'string' ? parseInt(response.data.storageUsed.replace('%','')) : (response.data.storageUsed ?? 0)
-        });
-      }
+      setMetrics(response);
     } catch (error) {
       console.error('Failed to fetch dashboard metrics:', error);
     }
@@ -143,8 +133,8 @@ const AdminDashboard = () => {
                     totalDepartments: departments.length,
                     totalBranches: branches.length,
                     systemUptime: maintenanceData?.systemUptime || '99.8%',
-                    avgResponseTime: systemStatusData?.avgResponseTime || '120ms',
-                    storageUsed: typeof systemStatusData?.storageUsed === 'string' ? parseInt(systemStatusData.storageUsed.replace('%','')) : (systemStatusData?.storageUsed ?? 68)
+                    avgResponseTime: '120ms',
+                    storageUsed: 68
                   });
                   if (systemStatusData) setSystemStatus(systemStatusData);
                   setRecentActivities(activitiesData);

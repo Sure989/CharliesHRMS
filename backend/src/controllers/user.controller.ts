@@ -189,50 +189,9 @@ export const updateUserRole = async (req: Request, res: Response, next: NextFunc
       return res.status(404).json({ status: 'error', message: 'User not found' });
     }
 
-    // Automatically sync permissions with role
-    // Import ROLE_PERMISSIONS from frontend/types/types.ts or duplicate mapping here
-    const ROLE_PERMISSIONS = {
-      ADMIN: [
-        'admin:full_access', 'hr:add_employee', 'hr:delete_employee', 'hr:edit_employee_details', 'hr:assign_employee_to_branch',
-        'hr:manage_team_members', 'hr:view_team_details', 'hr:edit_team_member_status', 'hr:create_department', 'hr:edit_department',
-        'hr:delete_department', 'hr:create_branch', 'hr:edit_branch', 'hr:delete_branch', 'hr:manage_branch_operations',
-        'hr:manage_performance_reviews', 'hr:view_performance_reviews', 'hr:create_performance_review', 'performance:edit_review',
-        'hr:manage_training_programs', 'hr:view_training_programs', 'hr:create_training_program', 'training:enroll_employees',
-        'training:issue_certificates', 'team:schedule_members', 'leave:approve_requests', 'leave:view_requests',
-        'salary_advance:approve', 'salary_advance:view', 'admin:user_management', 'admin:system_admin', 'admin:workflow_management',
-        'reports:generate', 'reports:view_analytics', 'employee:staff_coordination'
-      ],
-      HR_MANAGER: [
-        'hr:manage_departments', 'hr:view_employees', 'hr:manage_employees', 'hr:add_employee', 'hr:delete_employee',
-        'hr:edit_employee_details', 'hr:assign_employee_to_branch', 'hr:manage_team_members', 'hr:view_team_details',
-        'hr:edit_team_member_status', 'hr:view_payroll', 'hr:manage_payroll', 'hr:view_leave', 'hr:manage_leave',
-        'hr:view_performance', 'hr:manage_performance', 'hr:manage_performance_reviews', 'hr:view_performance_reviews',
-        'hr:create_performance_review', 'performance:edit_review', 'hr:view_training', 'hr:manage_training',
-        'hr:manage_training_programs', 'hr:view_training_programs', 'hr:create_training_program', 'training:enroll_employees',
-        'training:issue_certificates', 'hr:view_departments', 'hr:create_department', 'hr:edit_department', 'hr:delete_department',
-        'hr:view_branches', 'hr:manage_branches', 'hr:create_branch', 'hr:edit_branch', 'hr:delete_branch', 'hr:manage_branch_operations',
-        'hr:view_salary_advances', 'hr:manage_salary_advances', 'leave:approve_requests', 'leave:view_requests',
-        'salary_advance:approve', 'salary_advance:view', 'reports:generate', 'reports:view_analytics',
-        'employee:view_profile', 'employee:view_payslips', 'employee:request_leave', 'employee:view_leave_status',
-        'employee:request_salary_advance', 'employee:view_salary_advance_status'
-      ],
-      OPERATIONS_MANAGER: [
-        'ops:view_employees', 'ops:manage_employees', 'ops:view_leave_approvals', 'ops:approve_leave', 'ops:view_salary_advances',
-        'ops:approve_salary_advances', 'ops:view_branch_performance', 'hr:manage_team_members', 'hr:view_team_details',
-        'hr:edit_team_member_status', 'team:schedule_members', 'hr:manage_branch_operations', 'hr:view_departments',
-        'hr:view_branches', 'leave:approve_requests', 'leave:view_requests', 'salary_advance:approve', 'salary_advance:view',
-        'reports:generate', 'reports:view_analytics', 'employee:view_profile', 'employee:view_payslips', 'employee:request_leave',
-        'employee:view_leave_status', 'employee:request_salary_advance', 'employee:view_salary_advance_status'
-      ],
-      EMPLOYEE: [
-        'employee:view_profile', 'employee:edit_profile', 'employee:view_payslips', 'employee:request_leave', 'employee:view_leave_status',
-        'employee:request_salary_advance', 'employee:view_salary_advance_status', 'employee:staff_coordination'
-      ]
-    };
-    const permissions = ROLE_PERMISSIONS[role.toUpperCase()] || [];
     const updatedUser = await prisma.user.update({
       where: { id },
-      data: { role, permissions },
+      data: { role },
       select: {
         id: true,
         firstName: true,
