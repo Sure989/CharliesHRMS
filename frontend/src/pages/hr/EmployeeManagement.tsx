@@ -80,8 +80,7 @@ const EmployeeManagement = () => {
             position: emp.position,
             hireDate: emp.hireDate,
             phone: emp.phone || '',
-            status: emp.status === 'terminated' ? 'inactive' : (emp.status || 'active'),
-            permissions: []
+            status: emp.status === 'terminated' ? 'inactive' : (emp.status || 'active')
           }));
           setEmployees(employeesAsUsers);
         }
@@ -201,8 +200,7 @@ const EmployeeManagement = () => {
             position: emp.position,
             hireDate: emp.hireDate,
             phone: emp.phone || '',
-            status: emp.status === 'terminated' ? 'inactive' : (emp.status || 'active'),
-            permissions: []
+            status: emp.status === 'terminated' ? 'inactive' : (emp.status || 'active')
           }));
           setEmployees(employeesAsUsers);
         }
@@ -320,8 +318,7 @@ const EmployeeManagement = () => {
         position: response.position,
         hireDate: response.hireDate,
         phone: response.phone || '',
-        status: response.status === 'terminated' ? 'inactive' : (response.status || 'active'),
-        permissions: []
+        status: response.status === 'terminated' ? 'inactive' : (response.status || 'active')
       };
       
       setEmployees(prev => [...prev, newUser]);

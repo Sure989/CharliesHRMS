@@ -62,7 +62,6 @@ export const login = async (req: Request, res: Response) => {
       userId: user.id,
       role: user.role,
       tenantId: user.tenantId || tenantId,
-      permissions: user.permissions,
     };
 
     // Generate tokens
@@ -118,7 +117,6 @@ export const login = async (req: Request, res: Response) => {
           employeeId: user.employeeId,
           branchId,
           branch,
-          permissions: user.permissions, // Include permissions in the user object
         },
         accessToken,
         refreshToken,
@@ -218,7 +216,6 @@ export const refreshToken = async (req: Request, res: Response) => {
       userId: session.user.id,
       role: session.user.role,
       tenantId: tenantIdForToken,
-      permissions: session.user.permissions,
     };
 
     // Generate new access token
@@ -389,7 +386,6 @@ export const register = async (req: Request, res: Response) => {
       userId: user.id,
       role: user.role,
       tenantId: user.tenantId,
-      permissions: user.permissions,
     };
 
     const accessToken = generateToken(tokenPayload);

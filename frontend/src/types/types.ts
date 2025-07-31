@@ -65,7 +65,6 @@ export interface User {
   status?: 'active' | 'inactive' | 'suspended' | 'terminated';
   position?: string;
   lastLogin?: string;
-  permissions?: string[];
   createdBy?: string;
   createdDate?: string;
   managedBy?: string;

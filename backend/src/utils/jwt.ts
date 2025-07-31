@@ -5,7 +5,6 @@ export interface TokenPayload {
   userId: string;
   role: string;
   tenantId: string;
-  permissions: string[];
 }
 
 /**

@@ -1,29 +1,24 @@
 import { User, PERMISSIONS, PermissionKey, ROLE_PERMISSIONS } from '@/types/types';
 
 /**
- * Check if a user has a specific permission based on their role or explicit permissions
+ * Check if a user has a specific permission based on their role
  */
 export const hasPermission = (user: User | null, permission: PermissionKey): boolean => {
   if (!user) return false;
-  
-  // Check if user has the permission explicitly assigned
-  if (user.permissions && user.permissions.includes(permission)) {
+
+  // Admin always has all permissions
+  if (user.role === 'ADMIN') {
     return true;
   }
-  
+
   // Check if user's role grants the permission
   if (user.role) {
     const upperRole = user.role.toUpperCase();
     if (ROLE_PERMISSIONS[upperRole] && ROLE_PERMISSIONS[upperRole].includes(permission)) {
       return true;
     }
-    
-    // Admin always has all permissions
-    if (upperRole === 'ADMIN') {
-      return true;
-    }
   }
-  
+
   return false;
 };
 

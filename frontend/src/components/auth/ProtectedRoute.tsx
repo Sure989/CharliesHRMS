@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { hasPermission } from '@/utils/permissions';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertTriangle } from 'lucide-react';
+import { PermissionKey } from '../../types/types';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -47,27 +48,22 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 
   // Check for permission-based access
   if (requiredPermissions && requiredPermissions.length > 0 && user) {
-    // Admin users have all permissions by default
-    if (user.role === 'ADMIN') {
-      // Admin users bypass permission checks
-    } else {
-      const hasAllPermissions = requiredPermissions.every(permission => 
-        user.permissions?.includes(permission)
-      );
+    const hasAllPermissions = requiredPermissions.every(permission =>
+      hasPermission(user, permission as PermissionKey)
+    );
 
-      if (!hasAllPermissions) {
-        return (
-          <div className="p-8">
-            <Alert variant="destructive">
-              <AlertTriangle className="h-4 w-4" />
-              <AlertTitle>Insufficient Permissions</AlertTitle>
-              <AlertDescription>
-                You do not have the required permissions to access this page.
-              </AlertDescription>
-            </Alert>
-          </div>
-        );
-      }
+    if (!hasAllPermissions) {
+      return (
+        <div className="p-8">
+          <Alert variant="destructive">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>Insufficient Permissions</AlertTitle>
+            <AlertDescription>
+              You do not have the required permissions to access this page.
+            </AlertDescription>
+          </Alert>
+        </div>
+      );
     }
   }
 
