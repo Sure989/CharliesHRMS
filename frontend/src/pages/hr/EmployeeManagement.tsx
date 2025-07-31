@@ -8,8 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { useState, useEffect } from 'react';
-// ...existing imports...
+import { useState, useEffect, useMemo } from 'react';
 import { Plus, Search, Edit, Trash2, UserCheck, UserX, Shield, Info, AlertTriangle, Upload, Download, FileSpreadsheet } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
@@ -40,24 +39,19 @@ const EmployeeManagement = () => {
     errors: Array<{ row: number; error: string }>;
   } | null>(null);
 
-  // Helper to map department and branch objects for all employees
-  // Create lookup maps for departments and branches
-  const departmentMap = Object.fromEntries(departments.map(dept => [dept.id, dept]));
-  const branchMap = Object.fromEntries(branches.map(branch => [branch.id, branch]));
-  // Helper to map department and branch objects for all employees
-  const mapEmployeeRelations = (employeesList) => {
-    return employeesList.map(emp => {
-      const branchId = emp.branchId || emp.branch_id || '';
-      const departmentId = emp.departmentId || emp.department_id || '';
-      return {
-        ...emp,
-        branchId,
-        departmentId,
-        branch: branchMap[branchId] || null,
-        department: departmentMap[departmentId] || null,
-      };
-    });
+  // Create lookup maps for departments and branches using useMemo
+  const departmentMap = useMemo(() => Object.fromEntries(departments.map(dept => [dept.id, dept])), [departments]);
+  const branchMap = useMemo(() => Object.fromEntries(branches.map(branch => [branch.id, branch])), [branches]);
+
+  // Merge employee data with department and branch objects
+  const mergeEmployeeData = (employees, departments, branches) => {
+    return employees.map(employee => ({
+      ...employee,
+      department: departmentMap[employee.departmentId] || null,
+      branch: branchMap[employee.branchId] || null
+    }));
   };
+
   // Permission checks
   const canAdd = canAddEmployee(currentUser);
   const canEdit = canEditEmployeeDetails(currentUser);
@@ -101,10 +95,10 @@ const EmployeeManagement = () => {
         setBranches(branchesResponse || []);
         setDepartments(departmentsResponse || []);
         // Only set employees after branches and departments are set
-        const mappedEmployees = mapEmployeeRelations(employeesAsUsers);
+        const mergedEmployees = mergeEmployeeData(employeesAsUsers, departmentsResponse || [], branchesResponse || []);
         // Debug: log mapped employees with relations
-        console.log('Mapped employees with relations:', mappedEmployees);
-        setEmployees(mappedEmployees);
+        console.log('Mapped employees with relations:', mergedEmployees);
+        setEmployees(mergedEmployees);
       } catch (error) {
         console.error('Failed to load initial data:', error);
         toast({
@@ -216,7 +210,7 @@ const EmployeeManagement = () => {
             phone: emp.phone || '',
             status: emp.status === 'terminated' ? 'inactive' : (emp.status || 'active')
           }));
-          setEmployees(mapEmployeeRelations(employeesAsUsers));
+          setEmployees(mergeEmployeeData(employeesAsUsers, departments, branches));
         }
       } else {
         toast({
@@ -333,7 +327,7 @@ const EmployeeManagement = () => {
         status: response.status === 'terminated' ? 'inactive' : (response.status || 'active')
       };
       // Always map relations after adding
-      setEmployees(prev => mapEmployeeRelations([...prev, newUser]));
+      setEmployees(prev => mergeEmployeeData([...prev, newUser], departments, branches));
       setNewEmployee({
         employeeId: '',
         firstName: '',
@@ -417,7 +411,7 @@ const EmployeeManagement = () => {
               }
             : emp
         );
-        return mapEmployeeRelations(updated);
+        return mergeEmployeeData(updated, departments, branches);
       });
 
       setIsEditDialogOpen(false);
@@ -656,58 +650,49 @@ const EmployeeManagement = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredEmployees.map((employee) => {
-                    // Debug: log each employee's department and branch
-                    console.log('Employee:', employee);
-                    console.log('Department:', employee.department, 'DepartmentId:', employee.departmentId);
-                    console.log('Branch:', employee.branch, 'BranchId:', employee.branchId);
-                    // Use lookup maps for robust rendering
-                    const departmentName = employee.department?.name || departmentMap[employee.departmentId]?.name || 'N/A';
-                    const branchName = employee.branch?.name || branchMap[employee.branchId]?.name || 'N/A';
-                    return (
-                      <TableRow key={employee.id}>
-                        <TableCell className="font-medium">
-                          <div>
-                            <div>{employee.firstName} {employee.lastName}</div>
-                            <div className="text-sm text-muted-foreground">{employee.employeeId}</div>
-                          </div>
-                        </TableCell>
-                        <TableCell>{employee.email}</TableCell>
-                        <TableCell>{departmentName}</TableCell>
-                        <TableCell>{branchName}</TableCell>
-                        <TableCell>{employee.position || 'N/A'}</TableCell>
-                        <TableCell>
-                          <Badge variant={employee.status === 'active' ? 'default' : 'secondary'}>
-                            {employee.status || 'active'}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex items-center justify-end space-x-2">
-                            {canEdit && (
-                              <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                className="hover:bg-blue-100"
-                                onClick={() => handleEditEmployee(employee)}
-                              >
-                                <Edit className="h-4 w-4 text-blue-600" />
-                              </Button>
-                            )}
-                            {canDelete && (
-                              <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                className="hover:bg-red-100"
-                                onClick={() => handleDeleteEmployee(employee)}
-                              >
-                                <Trash2 className="h-4 w-4 text-red-600" />
-                              </Button>
-                            )}
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
+                  {filteredEmployees.map((employee) => (
+                    <TableRow key={employee.id}>
+                      <TableCell className="font-medium">
+                        <div>
+                          <div>{employee.firstName} {employee.lastName}</div>
+                          <div className="text-sm text-muted-foreground">{employee.employeeId}</div>
+                        </div>
+                      </TableCell>
+                      <TableCell>{employee.email}</TableCell>
+                      <TableCell>{departmentMap[employee.departmentId]?.name || 'N/A'}</TableCell>
+                      <TableCell>{branchMap[employee.branchId]?.name || 'N/A'}</TableCell>
+                      <TableCell>{employee.position || 'N/A'}</TableCell>
+                      <TableCell>
+                        <Badge variant={employee.status === 'active' ? 'default' : 'secondary'}>
+                          {employee.status || 'active'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end space-x-2">
+                          {canEdit && (
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="hover:bg-blue-100"
+                              onClick={() => handleEditEmployee(employee)}
+                            >
+                              <Edit className="h-4 w-4 text-blue-600" />
+                            </Button>
+                          )}
+                          {canDelete && (
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="hover:bg-red-100"
+                              onClick={() => handleDeleteEmployee(employee)}
+                            >
+                              <Trash2 className="h-4 w-4 text-red-600" />
+                            </Button>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
                 </TableBody>
               </Table>
             )}
