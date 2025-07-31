@@ -309,7 +309,7 @@ const UserManagement: React.FC = () => {
         lastName: addUser.lastName.trim(),
         email: addUser.email.trim(),
         position: addUser.role, // or set to a default/empty string if needed
-        hireDate: new Date().toISOString(),
+        hireDate: new Date().toISOString().split('T')[0],
         phone: '',
         department: '', // Provide a default or select value if available
         branch: '',     // Provide a default or select value if available

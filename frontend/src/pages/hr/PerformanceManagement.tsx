@@ -70,7 +70,7 @@ const PerformanceManagement = () => {
         id: review.id.toString(),
         employeeId: review.employee.id.toString(),
         employeeName: review.employee.name,
-        position: review.employee.position,
+        position: '', // No position property in review.employee
         branch: review.employee.branch,
         reviewPeriod: review.period,
         reviewType: 'quarterly' as const,
@@ -150,7 +150,7 @@ const PerformanceManagement = () => {
         id: review.id.toString(),
         employeeId: review.employee.id.toString(),
         employeeName: review.employee.name,
-        position: review.employee.position,
+        position: '', // No position property in review.employee
         branch: review.employee.branch,
         reviewPeriod: review.period,
         reviewType: 'quarterly' as const,

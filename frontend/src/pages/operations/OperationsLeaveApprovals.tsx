@@ -38,21 +38,7 @@ const OperationsLeaveApprovals = () => {
     const loadLeaveRequests = async () => {
       setLoading(true);
       try {
-        // Get branch info from user.branch, fallback to user.branchId/user.branchName if missing
-        let userBranch = user?.branch as unknown as import('@/types/branch').Branch | undefined;
-        let userBranchId = userBranch?.id;
-        let userBranchName = userBranch?.name;
-        // Fallbacks for legacy or incomplete user objects
-        if (!userBranchId && user?.branchId) userBranchId = user.branchId;
-        if (!userBranchName && user?.branchName) userBranchName = user.branchName;
-        // Debug: log user object if branch info missing
-        if (!userBranchId && !userBranchName) {
-           
-          console.log('User object missing branch info:', user);
-        }
-        // Pass branchId as a filter to the backend API
-        const response = await leaveService.getLeaveRequests(userBranchId ? { branchId: userBranchId } : undefined);
-        // Defensive: handle both array and object with leaveRequests property
+        const response = await leaveService.getLeaveRequests();
         const data = Array.isArray(response)
           ? response
           : Array.isArray((response as any)?.leaveRequests)
@@ -60,43 +46,43 @@ const OperationsLeaveApprovals = () => {
             : Array.isArray((response as any)?.data?.leaveRequests)
               ? (response as any).data.leaveRequests
               : [];
-        // Exclude leave requests submitted by the ops manager themselves
-        const filtered = Array.isArray(data)
-          ? data.filter((r: any) => r.employeeId !== user?.employeeId)
-          : [];
+        // Debug: log raw data from backend
+        console.log('[LeaveApprovals] Raw leave requests from backend:', data);
         // Map backend fields to LeaveRequest type
-        const mapped = filtered
-          .map((r: any) => {
-            return {
-              ...r,
-              employeeName: r.employeeName || (r.employee ? `${r.employee.firstName} ${r.employee.lastName}` : ''),
-              branch: r.employee?.branch?.name || r.branch || '',
-              leaveType: r.leaveTypeName || r.leaveType?.name || r.leaveType || '',
-              startDate: r.startDate,
-              endDate: r.endDate,
-              days: r.days || r.totalDays,
-              reason: r.reason,
-              status: r.status,
-              submissionDate: r.appliedAt || r.submissionDate,
-              id: r.id,
-              employeeId: r.employeeId,
-              opsManagerId: r.opsManagerId,
-              opsManagerName: r.opsManagerName,
-              opsInitialDate: r.opsInitialDate,
-              opsInitialComments: r.opsInitialComments,
-              hrReviewerId: r.hrReviewerId,
-              hrReviewerName: r.hrReviewerName,
-              hrReviewDate: r.hrReviewDate,
-              hrDecision: r.hrDecision,
-              hrComments: r.hrComments,
-              opsFinalDate: r.opsFinalDate,
-              opsFinalDecision: r.opsFinalDecision,
-              opsFinalComments: r.opsFinalComments,
-              currentStep: r.currentStep ?? '',
-              workflowHistory: r.workflowHistory ?? [],
-            };
-          })
-          .filter((r: any) => r.status !== 'deleted' && r.status !== 'cancelled');
+        const mapped = Array.isArray(data)
+          ? data
+              .map((r: any) => ({
+                ...r,
+                employeeName: r.employeeName || (r.employee ? `${r.employee.firstName} ${r.employee.lastName}` : ''),
+                branch: r.employee?.branch?.name || r.branch || '',
+                leaveType: r.leaveTypeName || r.leaveType?.name || r.leaveType || '',
+                startDate: r.startDate,
+                endDate: r.endDate,
+                days: r.days || r.totalDays,
+                reason: r.reason,
+                status: r.status,
+                submissionDate: r.appliedAt || r.submissionDate,
+                id: r.id,
+                employeeId: r.employeeId,
+                opsManagerId: r.opsManagerId,
+                opsManagerName: r.opsManagerName,
+                opsInitialDate: r.opsInitialDate,
+                opsInitialComments: r.opsInitialComments,
+                hrReviewerId: r.hrReviewerId,
+                hrReviewerName: r.hrReviewerName,
+                hrReviewDate: r.hrReviewDate,
+                hrDecision: r.hrDecision,
+                hrComments: r.hrComments,
+                opsFinalDate: r.opsFinalDate,
+                opsFinalDecision: r.opsFinalDecision,
+                opsFinalComments: r.opsFinalComments,
+                currentStep: r.currentStep ?? '',
+                workflowHistory: r.workflowHistory ?? [],
+              }))
+              .filter((r: any) => r.status !== 'deleted' && r.status !== 'cancelled')
+          : [];
+        // Debug: log mapped requests
+        console.log('[LeaveApprovals] Mapped leave requests for UI:', mapped);
         setLeaveRequests(mapped);
       } catch (error) {
         toast({ title: "Error", description: "Failed to load leave requests.", variant: "destructive" });
@@ -135,11 +121,6 @@ const OperationsLeaveApprovals = () => {
         variant: isApproved ? "default" : "destructive"
       });
       // Reload leave requests after action
-      let userBranch = user?.branch as unknown as import('@/types/branch').Branch | undefined;
-      let userBranchId = userBranch?.id;
-      let userBranchName = userBranch?.name;
-      if (!userBranchId && user?.branchId) userBranchId = user.branchId;
-      if (!userBranchName && user?.branchName) userBranchName = user.branchName;
       const response = await leaveService.getLeaveRequests();
       const data = Array.isArray(response)
         ? response
@@ -148,57 +129,38 @@ const OperationsLeaveApprovals = () => {
           : Array.isArray((response as any)?.data?.leaveRequests)
             ? (response as any).data.leaveRequests
             : [];
-      const filtered = Array.isArray(data)
-        ? data.filter((r: any) => {
-            let match = false;
-            const empBranch = r.employee?.branch;
-            if (r.employeeId === user?.employeeId) return false;
-            if (userBranchId && (empBranch?.id === userBranchId || (r.branch && typeof r.branch === 'object' && r.branch.id === userBranchId))) {
-              match = true;
-            }
-            const branchNameToUse = userBranchName || empBranch?.name;
-            if (!match && branchNameToUse) {
-              if (empBranch?.name && empBranch.name.trim().toLowerCase() === branchNameToUse.trim().toLowerCase()) match = true;
-              if (!match && r.branch) {
-                if (typeof r.branch === 'object' && r.branch.name && r.branch.name.trim().toLowerCase() === branchNameToUse.trim().toLowerCase()) match = true;
-                if (!match && typeof r.branch === 'string' && r.branch.trim().toLowerCase() === branchNameToUse.trim().toLowerCase()) match = true;
-              }
-            }
-            return match;
-          })
+      const mapped = Array.isArray(data)
+        ? data
+            .map((r: any) => ({
+              ...r,
+              employeeName: r.employeeName || (r.employee ? `${r.employee.firstName} ${r.employee.lastName}` : ''),
+              branch: r.employee?.branch?.name || r.branch || '',
+              leaveType: r.leaveTypeName || r.leaveType?.name || r.leaveType || '',
+              startDate: r.startDate,
+              endDate: r.endDate,
+              days: r.days || r.totalDays,
+              reason: r.reason,
+              status: r.status,
+              submissionDate: r.appliedAt || r.submissionDate,
+              id: r.id,
+              employeeId: r.employeeId,
+              opsManagerId: r.opsManagerId,
+              opsManagerName: r.opsManagerName,
+              opsInitialDate: r.opsInitialDate,
+              opsInitialComments: r.opsInitialComments,
+              hrReviewerId: r.hrReviewerId,
+              hrReviewerName: r.hrReviewerName,
+              hrReviewDate: r.hrReviewDate,
+              hrDecision: r.hrDecision,
+              hrComments: r.hrComments,
+              opsFinalDate: r.opsFinalDate,
+              opsFinalDecision: r.opsFinalDecision,
+              opsFinalComments: r.opsFinalComments,
+              currentStep: r.currentStep ?? '',
+              workflowHistory: r.workflowHistory ?? [],
+            }))
+            .filter((r: any) => r.status !== 'deleted' && r.status !== 'cancelled')
         : [];
-      const mapped = filtered
-        .map((r: any) => {
-          return {
-            ...r,
-            employeeName: r.employeeName || (r.employee ? `${r.employee.firstName} ${r.employee.lastName}` : ''),
-            branch: r.employee?.branch?.name || r.branch || '',
-            leaveType: r.leaveTypeName || r.leaveType?.name || r.leaveType || '',
-            startDate: r.startDate,
-            endDate: r.endDate,
-            days: r.days || r.totalDays,
-            reason: r.reason,
-            status: r.status,
-            submissionDate: r.appliedAt || r.submissionDate,
-            id: r.id,
-            employeeId: r.employeeId,
-            opsManagerId: r.opsManagerId,
-            opsManagerName: r.opsManagerName,
-            opsInitialDate: r.opsInitialDate,
-            opsInitialComments: r.opsInitialComments,
-            hrReviewerId: r.hrReviewerId,
-            hrReviewerName: r.hrReviewerName,
-            hrReviewDate: r.hrReviewDate,
-            hrDecision: r.hrDecision,
-            hrComments: r.hrComments,
-            opsFinalDate: r.opsFinalDate,
-            opsFinalDecision: r.opsFinalDecision,
-            opsFinalComments: r.opsFinalComments,
-            currentStep: r.currentStep ?? '',
-            workflowHistory: r.workflowHistory ?? [],
-          };
-        })
-        .filter((r: any) => r.status !== 'deleted' && r.status !== 'cancelled');
       setLeaveRequests(mapped);
       setIsViewDialogOpen(false);
       setApprovalComments("");

@@ -68,6 +68,7 @@ export interface User {
   createdBy?: string;
   createdDate?: string;
   managedBy?: string;
+  permissions?: string[];
   
   // Computed fields for backward compatibility and display
   branch?: Branch;

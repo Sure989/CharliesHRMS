@@ -818,7 +818,7 @@ const EmployeeManagement = () => {
                   <Input
                     id="hireDate"
                     type="date"
-                    value={newEmployee.hireDate}
+                    value={newEmployee.hireDate ? newEmployee.hireDate.split('T')[0] : ''}
                     onChange={(e) => setNewEmployee({ ...newEmployee, hireDate: e.target.value })}
                     className={formErrors.hireDate ? 'border-red-500' : ''}
                   />
