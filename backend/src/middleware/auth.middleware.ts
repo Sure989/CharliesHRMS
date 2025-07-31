@@ -116,32 +116,6 @@ export const restrictTo = (allowedRoles: string[]) => {
   };
 };
 
-/**
- * Middleware to check for specific user permissions
- * @param requiredPermissions - Array of permissions required to access the route
- */
-export const checkPermissions = (requiredPermissions: string[]) => {
-  return (req: Request, res: Response, next: NextFunction) => {
-    if (!req.user) {
-      return res.status(401).json({
-        status: 'error',
-        message: 'Authentication required. Please log in.',
-      });
-    }
-
-    const userPermissions = req.user.permissions || [];
-    const hasAllPermissions = requiredPermissions.every((p) => userPermissions.includes(p));
-
-    if (!hasAllPermissions) {
-      return res.status(403).json({
-        status: 'error',
-        message: 'You do not have the required permissions to perform this action.',
-      });
-    }
-
-    next();
-  };
-};
 
 /**
  * Middleware to check if user belongs to the specified tenant
