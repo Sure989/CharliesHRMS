@@ -650,57 +650,59 @@ const EmployeeManagement = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredEmployees.map((employee) => (
-                    <TableRow key={employee.id}>
-                      <TableCell className="font-medium">
-                        <div>
-                          <div>{employee.firstName} {employee.lastName}</div>
-                          <div className="text-sm text-muted-foreground">{employee.employeeId}</div>
-                        </div>
-                      </TableCell>
-                      <TableCell>{employee.email}</TableCell>
-                      <TableCell>{
-                        (employee.department && typeof employee.department === 'object' && employee.department.name)
-                        || (employee.departmentId && departments.find(d => d.id === employee.departmentId)?.name)
-                        || 'N/A'
-                      }</TableCell>
-                      <TableCell>{
-                        (employee.branch && typeof employee.branch === 'object' && employee.branch.name)
-                        || (employee.branchId && branches.find(b => b.id === employee.branchId)?.name)
-                        || 'N/A'
-                      }</TableCell>
-                      <TableCell>{employee.position || 'N/A'}</TableCell>
-                      <TableCell>
-                        <Badge variant={employee.status === 'active' ? 'default' : 'secondary'}>
-                          {employee.status || 'active'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end space-x-2">
-                          {canEdit && (
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              className="hover:bg-blue-100"
-                              onClick={() => handleEditEmployee(employee)}
-                            >
-                              <Edit className="h-4 w-4 text-blue-600" />
-                            </Button>
-                          )}
-                          {canDelete && (
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              className="hover:bg-red-100"
-                              onClick={() => handleDeleteEmployee(employee)}
-                            >
-                              <Trash2 className="h-4 w-4 text-red-600" />
-                            </Button>
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {filteredEmployees.map((employee) => {
+                    // Debug: log each employee's department and branch
+                    console.log('Employee:', employee);
+                    console.log('Department:', employee.department, 'DepartmentId:', employee.departmentId);
+                    console.log('Branch:', employee.branch, 'BranchId:', employee.branchId);
+                    return (
+                      <TableRow key={employee.id}>
+                        <TableCell className="font-medium">
+                          <div>
+                            <div>{employee.firstName} {employee.lastName}</div>
+                            <div className="text-sm text-muted-foreground">{employee.employeeId}</div>
+                          </div>
+                        </TableCell>
+                        <TableCell>{employee.email}</TableCell>
+                        <TableCell>{
+                          employee.department?.name || employee.departmentName || 'N/A'
+                        }</TableCell>
+                        <TableCell>{
+                          employee.branch?.name || employee.branchName || 'N/A'
+                        }</TableCell>
+                        <TableCell>{employee.position || 'N/A'}</TableCell>
+                        <TableCell>
+                          <Badge variant={employee.status === 'active' ? 'default' : 'secondary'}>
+                            {employee.status || 'active'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex items-center justify-end space-x-2">
+                            {canEdit && (
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="hover:bg-blue-100"
+                                onClick={() => handleEditEmployee(employee)}
+                              >
+                                <Edit className="h-4 w-4 text-blue-600" />
+                              </Button>
+                            )}
+                            {canDelete && (
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="hover:bg-red-100"
+                                onClick={() => handleDeleteEmployee(employee)}
+                              >
+                                <Trash2 className="h-4 w-4 text-red-600" />
+                              </Button>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             )}
