@@ -1,11 +1,30 @@
-import { User, PERMISSIONS, PermissionKey } from '@/types/types';
+import { User, PERMISSIONS, PermissionKey, ROLE_PERMISSIONS } from '@/types/types';
 
 /**
- * Check if a user has a specific permission
+ * Check if a user has a specific permission based on their role or explicit permissions
  */
 export const hasPermission = (user: User | null, permission: PermissionKey): boolean => {
-  if (!user || !user.permissions) return false;
-  return user.permissions.includes(permission);
+  if (!user) return false;
+  
+  // Check if user has the permission explicitly assigned
+  if (user.permissions && user.permissions.includes(permission)) {
+    return true;
+  }
+  
+  // Check if user's role grants the permission
+  if (user.role) {
+    const upperRole = user.role.toUpperCase();
+    if (ROLE_PERMISSIONS[upperRole] && ROLE_PERMISSIONS[upperRole].includes(permission)) {
+      return true;
+    }
+    
+    // Admin always has all permissions
+    if (upperRole === 'ADMIN') {
+      return true;
+    }
+  }
+  
+  return false;
 };
 
 /**
@@ -248,70 +267,73 @@ export const canCreateTrainingProgram = (user: User | null): boolean => {
  * Check if a user can enroll employees in training
  */
 export const canEnrollEmployeesTraining = (user: User | null): boolean => {
-  return hasPermission(user, PERMISSIONS.ENROLL_EMPLOYEES_TRAINING);
+  return hasPermission(user, PERMISSIONS.TRAINING_ENROLL_EMPLOYEES);
 };
 
 /**
  * Check if a user can view leave requests
  */
 export const canViewLeaveRequests = (user: User | null): boolean => {
-  return hasPermission(user, PERMISSIONS.VIEW_LEAVE_REQUESTS);
+  return hasPermission(user, PERMISSIONS.LEAVE_VIEW_REQUESTS);
 };
 
 /**
  * Check if a user can approve leave requests
  */
 export const canApproveLeaveRequests = (user: User | null): boolean => {
-  return hasPermission(user, PERMISSIONS.APPROVE_LEAVE_REQUESTS);
+  return hasPermission(user, PERMISSIONS.LEAVE_APPROVE_REQUESTS);
 };
 
 /**
  * Check if a user can view salary advances
  */
 export const canViewSalaryAdvances = (user: User | null): boolean => {
-  return hasPermission(user, PERMISSIONS.VIEW_SALARY_ADVANCES);
+  return hasPermission(user, PERMISSIONS.SALARY_ADVANCE_VIEW) || 
+         hasPermission(user, PERMISSIONS.HR_VIEW_SALARY_ADVANCES) || 
+         hasPermission(user, PERMISSIONS.OPS_VIEW_SALARY_ADVANCES);
 };
 
 /**
  * Check if a user can approve salary advances
  */
 export const canApproveSalaryAdvances = (user: User | null): boolean => {
-  return hasPermission(user, PERMISSIONS.APPROVE_SALARY_ADVANCES);
+  return hasPermission(user, PERMISSIONS.SALARY_ADVANCE_APPROVE) || 
+         hasPermission(user, PERMISSIONS.OPS_APPROVE_SALARY_ADVANCES);
 };
 
 /**
  * Check if a user can generate reports
  */
 export const canGenerateReports = (user: User | null): boolean => {
-  return hasPermission(user, PERMISSIONS.GENERATE_REPORTS);
+  return hasPermission(user, PERMISSIONS.REPORTS_GENERATE);
 };
 
 /**
  * Check if a user can view analytics
  */
 export const canViewAnalytics = (user: User | null): boolean => {
-  return hasPermission(user, PERMISSIONS.VIEW_ANALYTICS);
+  return hasPermission(user, PERMISSIONS.REPORTS_VIEW_ANALYTICS);
 };
 
 /**
  * Check if a user can manage system administration
  */
 export const canManageSystem = (user: User | null): boolean => {
-  return hasPermission(user, PERMISSIONS.SYSTEM_ADMIN);
+  return hasPermission(user, PERMISSIONS.ADMIN_SYSTEM_ADMIN);
 };
 
 /**
  * Check if a user can manage workflows
  */
 export const canManageWorkflows = (user: User | null): boolean => {
-  return hasPermission(user, PERMISSIONS.WORKFLOW_MANAGEMENT);
+  return hasPermission(user, PERMISSIONS.ADMIN_WORKFLOW_MANAGEMENT);
 };
 
 /**
  * Check if a user can manage users
  */
 export const canManageUsers = (user: User | null): boolean => {
-  return hasPermission(user, PERMISSIONS.USER_MANAGEMENT);
+  return hasPermission(user, PERMISSIONS.ADMIN_USER_MANAGEMENT);
 };
 
 /**
@@ -320,7 +342,7 @@ export const canManageUsers = (user: User | null): boolean => {
 export const hasFullAdminAccess = (user: User | null): boolean => {
   if (!user) return false;
   return user.role.toUpperCase() === 'ADMIN' && 
-         hasPermission(user, PERMISSIONS.SYSTEM_ADMIN) && 
-         hasPermission(user, PERMISSIONS.USER_MANAGEMENT) &&
-         hasPermission(user, PERMISSIONS.WORKFLOW_MANAGEMENT);
+         hasPermission(user, PERMISSIONS.ADMIN_SYSTEM_ADMIN) && 
+         hasPermission(user, PERMISSIONS.ADMIN_USER_MANAGEMENT) &&
+         hasPermission(user, PERMISSIONS.ADMIN_WORKFLOW_MANAGEMENT);
 };
