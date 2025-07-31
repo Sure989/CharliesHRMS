@@ -114,11 +114,8 @@ const EmployeeManagement = () => {
   });
 
   // On initial load or when employees/branches/departments change, map department and branch objects for all employees
-  useEffect(() => {
-    if (employees.length && branches.length && departments.length) {
-      setEmployees(mapEmployeeRelations(employees, branches, departments));
-    }
-  }, [employees, branches, departments]);
+  // Remove this useEffect to avoid double mapping and stale data
+  // Mapping is done after fetch and after create/update
 
   // Filter employees
   const filteredEmployees = employees.filter(employee =>
@@ -319,7 +316,8 @@ const EmployeeManagement = () => {
         status: response.status === 'terminated' ? 'inactive' : (response.status || 'active')
       };
       
-      setEmployees(prev => [...prev, newUser]);
+      // Always map relations after adding
+      setEmployees(prev => mapEmployeeRelations([...prev, newUser], branches, departments));
       setNewEmployee({
         employeeId: '',
         firstName: '',
@@ -378,36 +376,38 @@ const EmployeeManagement = () => {
         email: newEmployee.email,
         phone: newEmployee.phone,
         position: newEmployee.position,
-        department: newEmployee.departmentId,
-        branch: newEmployee.branchId,
+        departmentId: newEmployee.departmentId, // send as ID
+        branchId: newEmployee.branchId, // send as ID
         hireDate: newEmployee.hireDate,
       };
 
       const response = await employeeService.updateEmployee(selectedEmployee.id, updateRequest);
-      
+
       // Update local state
-      setEmployees(prev => prev.map(emp => 
-        emp.id === selectedEmployee.id 
-          ? {
-              ...emp,
-              firstName: response.firstName,
-              lastName: response.lastName,
-              email: response.email,
-              phone: response.phone || '',
-              position: response.position,
-              branchId: newEmployee.branchId,
-              departmentId: newEmployee.departmentId,
-              branch: branches.find(b => b.id === newEmployee.branchId),
-              department: departments.find(d => d.id === newEmployee.departmentId),
-              hireDate: response.hireDate,
-            }
-          : emp
-      ));
-      
+      // Always map relations after update
+      setEmployees(prev => {
+        const updated = prev.map(emp => 
+          emp.id === selectedEmployee.id 
+            ? {
+                ...emp,
+                firstName: response.firstName,
+                lastName: response.lastName,
+                email: response.email,
+                phone: response.phone || '',
+                position: response.position,
+                branchId: newEmployee.branchId,
+                departmentId: newEmployee.departmentId,
+                hireDate: response.hireDate,
+              }
+            : emp
+        );
+        return mapEmployeeRelations(updated, branches, departments);
+      });
+
       setIsEditDialogOpen(false);
       setSelectedEmployee(null);
       setFormErrors({});
-      
+
       toast({
         title: "Employee Updated",
         description: `${response.firstName} ${response.lastName} has been updated successfully.`,
@@ -650,14 +650,14 @@ const EmployeeManagement = () => {
                       </TableCell>
                       <TableCell>{employee.email}</TableCell>
                       <TableCell>{
-                        employee.department?.name ||
-                        departments.find(d => d.id === employee.departmentId)?.name ||
-                        'N/A'
+                        (employee.department && typeof employee.department === 'object' && employee.department.name)
+                        || (employee.departmentId && departments.find(d => d.id === employee.departmentId)?.name)
+                        || 'N/A'
                       }</TableCell>
                       <TableCell>{
-                        employee.branch?.name ||
-                        branches.find(b => b.id === employee.branchId)?.name ||
-                        'N/A'
+                        (employee.branch && typeof employee.branch === 'object' && employee.branch.name)
+                        || (employee.branchId && branches.find(b => b.id === employee.branchId)?.name)
+                        || 'N/A'
                       }</TableCell>
                       <TableCell>{employee.position || 'N/A'}</TableCell>
                       <TableCell>
