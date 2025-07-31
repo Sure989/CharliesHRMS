@@ -78,9 +78,15 @@ export const getEmployees = async (req: Request, res: Response) => {
       orderBy: { createdAt: 'desc' },
     });
 
+    // Ensure departmentId and branchId are always present in the response
+    const employeesWithIds = employees.map(emp => ({
+      ...emp,
+      departmentId: emp.departmentId,
+      branchId: emp.branchId,
+    }));
     return res.status(200).json({
       status: 'success',
-      data: { employees },
+      data: { employees: employeesWithIds },
     });
   } catch (error) {
     console.error('Get employees error:', error);
