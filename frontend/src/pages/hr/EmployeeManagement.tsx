@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useState, useEffect } from 'react';
-import { getDashboardMetricsWebSocketUrl } from '@/services/api/websocket.utils';
+// ...existing imports...
 import { Plus, Search, Edit, Trash2, UserCheck, UserX, Shield, Info, AlertTriangle, Upload, Download, FileSpreadsheet } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
@@ -40,6 +40,14 @@ const EmployeeManagement = () => {
     errors: Array<{ row: number; error: string }>;
   } | null>(null);
 
+  // Helper to map department and branch objects for all employees
+  const mapEmployeeRelations = (employeesList, branchesList, departmentsList) => {
+    return employeesList.map(emp => ({
+      ...emp,
+      branch: branchesList.find(b => b.id === emp.branchId) || null,
+      department: departmentsList.find(d => d.id === emp.departmentId) || null,
+    }));
+  };
   // Permission checks
   const canAdd = canAddEmployee(currentUser);
   const canEdit = canEditEmployeeDetails(currentUser);
@@ -107,6 +115,13 @@ const EmployeeManagement = () => {
     hireDate: '',
     phone: ''
   });
+
+  // On initial load or when employees/branches/departments change, map department and branch objects for all employees
+  useEffect(() => {
+    if (employees.length && branches.length && departments.length) {
+      setEmployees(mapEmployeeRelations(employees, branches, departments));
+    }
+  }, [employees, branches, departments]);
 
   // Filter employees
   const filteredEmployees = employees.filter(employee =>

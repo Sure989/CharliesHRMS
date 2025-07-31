@@ -275,6 +275,7 @@ export const getCurrentUser = async (req: Request, res: Response) => {
         lastLogin: true,
         tenantId: true,
         employeeId: true,
+        permissions: true,
       },
     });
 
