@@ -211,6 +211,9 @@ class EmployeeService {
         });
       }
 
+      // Include relations
+      params.append('includeRelations', 'true');
+
       const response = await apiClient.get<{employees: any[]}>(`/employees?${params.toString()}`);
       
       if (response.status === 'success' && response.data && response.data.employees) {

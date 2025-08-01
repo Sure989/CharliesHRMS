@@ -1,21 +1,22 @@
 import { PaginatedResponse } from '@/services/apiClient';
 
 /**
- * Helper function to extract data from either a direct array or a paginated response
- * 
- * @param response Either an array or a PaginatedResponse object from the API
- * @returns The array of items, empty array if not available
+ * Extracts data from API response
+ * Handles both { data: { data: ... } } and { data: ... } response formats
  */
-export function extractDataFromResponse<T>(
-  response: T[] | PaginatedResponse<T> | undefined | null
-): T[] {
-  if (!response) {
-    return [];
+export function extractDataFromResponse(response: any) {
+  if (!response) return [];
+  
+  // Handle case where response is { data: { data: ... } }
+  if (response.data && response.data.data) {
+    return response.data.data;
   }
   
-  if (Array.isArray(response)) {
-    return response;
+  // Handle case where response is { data: ... }
+  if (response.data) {
+    return response.data;
   }
   
-  return response.data || [];
+  // If response is already the data array
+  return response;
 }

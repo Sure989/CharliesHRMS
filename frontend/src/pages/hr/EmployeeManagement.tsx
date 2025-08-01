@@ -17,6 +17,7 @@ import { canAddEmployee, canDeleteEmployee, canEditEmployeeDetails, getRolePermi
 import { employeeService, Employee } from '@/services/api/employee.service';
 import { branchService } from '@/services/api/branch.service';
 import { departmentService } from '@/services/api/department.service';
+import { extractDataFromResponse } from '@/utils/api-helpers';
 
 const EmployeeManagement = () => {
   const { toast } = useToast();
@@ -39,7 +40,6 @@ const EmployeeManagement = () => {
     errors: Array<{ row: number; error: string }>;
   } | null>(null);
 
-
   // Helper to get department/branch name by id
   const getDepartmentName = (id: string) => departments.find(d => d.id === id)?.name || '';
   const getBranchName = (id: string) => branches.find(b => b.id === id)?.name || '';
@@ -54,60 +54,43 @@ const EmployeeManagement = () => {
 
   // Load initial data
   useEffect(() => {
-    const loadInitialData = async () => {
+    const fetchInitialData = async () => {
+      setLoading(true);
       try {
-        setLoading(true);
+        // Fetch all required data in parallel
         const [employeesResponse, branchesResponse, departmentsResponse] = await Promise.all([
           employeeService.getEmployees(),
           branchService.getAllBranches(),
           departmentService.getAllDepartments()
         ]);
 
-        // Debug: log raw API responses
-        console.log('Raw employeesResponse:', employeesResponse);
-        console.log('Raw branchesResponse:', branchesResponse);
-        console.log('Raw departmentsResponse:', departmentsResponse);
+        // Extract and set employees data
+        const employeesData = extractDataFromResponse(employeesResponse);
+        console.log('Employees data:', employeesData);
+        setEmployees(employeesData);
 
-        let employeesAsUsers: User[] = [];
-        if (employeesResponse.status === 'success' && employeesResponse.data) {
-          employeesAsUsers = employeesResponse.data.map((emp: any) => ({
-            id: emp.id,
-            employeeId: emp.employeeNumber || emp.employeeId,
-            firstName: emp.firstName,
-            lastName: emp.lastName,
-            email: emp.email,
-            role: 'EMPLOYEE',
-            branchId: emp.branchId || '',
-            departmentId: emp.departmentId || '',
-            position: emp.position,
-            hireDate: emp.hireDate,
-            phone: emp.phone || '',
-            status: emp.status === 'terminated' ? 'inactive' : (emp.status || 'active')
-          }));
-          // Debug: log mapped employeesAsUsers
-          console.log('Mapped employeesAsUsers:', employeesAsUsers);
-        }
-        setBranches(branchesResponse || []);
-        setDepartments(departmentsResponse || []);
-        // Only set employees after branches and departments are set
-        const mergedEmployees = mergeEmployeeData(employeesAsUsers);
-        // Debug: log mapped employees with relations
-        console.log('Mapped employees with relations:', mergedEmployees);
-        setEmployees(mergedEmployees);
+        // Extract and set branches data
+        const branchesData = extractDataFromResponse(branchesResponse);
+        setBranches(branchesData);
+
+        // Extract and set departments data
+        const departmentsData = extractDataFromResponse(departmentsResponse);
+        setDepartments(departmentsData);
+
       } catch (error) {
-        console.error('Failed to load initial data:', error);
+        console.error('Error fetching initial data:', error);
         toast({
-          title: "Error",
-          description: "Failed to load employee data.",
-          variant: "destructive",
+          title: 'Error',
+          description: 'Failed to fetch initial data',
+          variant: 'destructive',
         });
       } finally {
         setLoading(false);
       }
     };
 
-    loadInitialData();
-  }, [toast]);
+    fetchInitialData();
+  }, []);
 
   // Employee form state
   const [newEmployee, setNewEmployee] = useState({
@@ -121,10 +104,6 @@ const EmployeeManagement = () => {
     hireDate: '',
     phone: ''
   });
-
-  // On initial load or when employees/branches/departments change, map department and branch objects for all employees
-  // Remove this useEffect to avoid double mapping and stale data
-  // Mapping is done after fetch and after create/update
 
   // Filter employees
   const filteredEmployees = employees.filter(employee =>
@@ -654,8 +633,12 @@ const EmployeeManagement = () => {
                         </div>
                       </TableCell>
                       <TableCell>{employee.email}</TableCell>
-                      <TableCell>{employee.department?.name || ''}</TableCell>
-                      <TableCell>{employee.branch?.name || ''}</TableCell>
+                      <TableCell>
+                        {getDepartmentName(employee.departmentId) || 'N/A'}
+                      </TableCell>
+                      <TableCell>
+                        {getBranchName(employee.branchId) || 'N/A'}
+                      </TableCell>
                       <TableCell>{employee.position || 'N/A'}</TableCell>
                       <TableCell>
                         <Badge variant={employee.status === 'active' ? 'default' : 'secondary'}>

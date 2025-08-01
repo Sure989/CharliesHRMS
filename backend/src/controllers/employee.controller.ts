@@ -52,41 +52,21 @@ export const getEmployeeByEmployeeNumber = async (req: Request, res: Response) =
  */
 export const getEmployees = async (req: Request, res: Response) => {
   try {
-    if (!req.tenantId) {
-      return res.status(401).json({
-        status: 'error',
-        message: 'Tenant ID is required',
-      });
-    }
-
+    const includeRelations = req.query.includeRelations === 'true';
+    
     const employees = await prisma.employee.findMany({
-      where: { tenantId: req.tenantId },
-      include: {
-        department: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-        branch: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
+      where: {
+        tenantId: req.tenantId,
       },
-      orderBy: { createdAt: 'desc' },
+      include: {
+        department: includeRelations,
+        branch: includeRelations,
+      },
     });
 
-    // Ensure departmentId and branchId are always present in the response
-    const employeesWithIds = employees.map(emp => ({
-      ...emp,
-      departmentId: emp.departmentId,
-      branchId: emp.branchId,
-    }));
     return res.status(200).json({
       status: 'success',
-      data: { employees: employeesWithIds },
+      data: employees,
     });
   } catch (error) {
     console.error('Get employees error:', error);
