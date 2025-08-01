@@ -57,25 +57,31 @@ const EmployeeManagement = () => {
     const fetchInitialData = async () => {
       setLoading(true);
       try {
-        // Fetch all required data in parallel - using correct method names
-        const [employeesResponse, branchesResponse, departmentsResponse] = await Promise.all([
-          employeeService.getEmployees(), // Changed back to getEmployees
-          branchService.getAllBranches(), // Changed to getBranches
-          departmentService.getAllDepartments() // Changed to getDepartments
-        ]);
-
-        // Extract and set employees data
+        // Fetch employees first since we know this works
+        const employeesResponse = await employeeService.getEmployees();
         const employeesData = extractDataFromResponse(employeesResponse);
         console.log('Employees data:', employeesData);
         setEmployees(employeesData);
 
-        // Extract and set branches data
-        const branchesData = extractDataFromResponse(branchesResponse);
-        setBranches(branchesData);
+        // Extract departments from employee data
+        const departmentsFromEmployees = employeesData
+          .filter(emp => emp.department)
+          .map(emp => emp.department)
+          .filter((dept, index, self) => 
+            dept && self.findIndex(d => d.id === dept.id) === index
+          );
 
-        // Extract and set departments data
-        const departmentsData = extractDataFromResponse(departmentsResponse);
-        setDepartments(departmentsData);
+        // Extract branches from employee data (though most seem to be null)
+        const branchesFromEmployees = employeesData
+          .filter(emp => emp.branch)
+          .map(emp => emp.branch)
+          .filter((branch, index, self) => 
+            branch && self.findIndex(b => b.id === branch.id) === index
+          );
+
+        // Set departments and branches state
+        setDepartments(departmentsFromEmployees);
+        setBranches(branchesFromEmployees);
 
       } catch (error) {
         console.error('Error fetching initial data:', error);
@@ -168,24 +174,8 @@ const EmployeeManagement = () => {
 
         // Refresh the employee list
         const employeesResponse = await employeeService.getEmployees();
-        if (employeesResponse.status === 'success' && employeesResponse.data) {
-          // Always map relations after fetch
-          const employeesAsUsers: User[] = employeesResponse.data.map((emp: any) => ({
-            id: emp.id,
-            employeeId: emp.employeeNumber || emp.employeeId,
-            firstName: emp.firstName,
-            lastName: emp.lastName,
-            email: emp.email,
-            role: 'EMPLOYEE',
-            branchId: emp.branchId || '',
-            departmentId: emp.departmentId || '',
-            position: emp.position,
-            hireDate: emp.hireDate,
-            phone: emp.phone || '',
-            status: emp.status === 'terminated' ? 'inactive' : (emp.status || 'active')
-          }));
-          setEmployees(mergeEmployeeData(employeesAsUsers));
-        }
+        const employeesData = extractDataFromResponse(employeesResponse);
+        setEmployees(employeesData);
       } else {
         toast({
           title: "Import Failed",
@@ -283,25 +273,13 @@ const EmployeeManagement = () => {
         hireDate: newEmployee.hireDate,
       };
 
-      const response = await employeeService.createEmployee(employeeRequest);
-      
-      // Add to local state
-      const newUser: User = {
-        id: response.id,
-        employeeId: response.employeeId,
-        firstName: response.firstName,
-        lastName: response.lastName,
-        email: response.email,
-        role: 'EMPLOYEE',
-        branchId: newEmployee.branchId,
-        departmentId: newEmployee.departmentId,
-        position: response.position,
-        hireDate: response.hireDate,
-        phone: response.phone || '',
-        status: response.status === 'terminated' ? 'inactive' : (response.status || 'active')
-      };
-      // Always map relations after adding
-      setEmployees(prev => mergeEmployeeData([...prev, newUser]));
+      await employeeService.createEmployee(employeeRequest);
+
+      // Refresh the employee list to get full objects
+      const employeesResponse = await employeeService.getEmployees();
+      const employeesData = extractDataFromResponse(employeesResponse);
+      setEmployees(employeesData);
+
       setNewEmployee({
         employeeId: '',
         firstName: '',
@@ -318,7 +296,7 @@ const EmployeeManagement = () => {
       
       toast({
         title: "Employee Created",
-        description: `${response.firstName} ${response.lastName} has been added successfully.`,
+        description: `Employee has been added successfully.`,
       });
     } catch (error: any) {
       toast({
@@ -365,28 +343,12 @@ const EmployeeManagement = () => {
         hireDate: newEmployee.hireDate,
       };
 
-      const response = await employeeService.updateEmployee(selectedEmployee.id, updateRequest);
+      await employeeService.updateEmployee(selectedEmployee.id, updateRequest);
 
-      // Update local state
-      // Always map relations after update
-      setEmployees(prev => {
-        const updated = prev.map(emp => 
-          emp.id === selectedEmployee.id 
-            ? {
-                ...emp,
-                firstName: response.firstName,
-                lastName: response.lastName,
-                email: response.email,
-                phone: response.phone || '',
-                position: response.position,
-                branchId: newEmployee.branchId,
-                departmentId: newEmployee.departmentId,
-                hireDate: response.hireDate,
-              }
-            : emp
-        );
-        return mergeEmployeeData(updated);
-      });
+      // Refresh the employee list to get full objects
+      const employeesResponse = await employeeService.getEmployees();
+      const employeesData = extractDataFromResponse(employeesResponse);
+      setEmployees(employeesData);
 
       setIsEditDialogOpen(false);
       setSelectedEmployee(null);
@@ -394,7 +356,7 @@ const EmployeeManagement = () => {
 
       toast({
         title: "Employee Updated",
-        description: `${response.firstName} ${response.lastName} has been updated successfully.`,
+        description: `Employee has been updated successfully.`,
       });
     } catch (error: any) {
       toast({
@@ -634,10 +596,10 @@ const EmployeeManagement = () => {
                       </TableCell>
                       <TableCell>{employee.email}</TableCell>
                       <TableCell>
-                        {getDepartmentName(employee.departmentId) || 'N/A'}
+                        {employee.department?.name || getDepartmentName(employee.departmentId) || 'N/A'}
                       </TableCell>
                       <TableCell>
-                        {getBranchName(employee.branchId) || 'N/A'}
+                        {employee.branch?.name || getBranchName(employee.branchId) || 'N/A'}
                       </TableCell>
                       <TableCell>{employee.position || 'N/A'}</TableCell>
                       <TableCell>
