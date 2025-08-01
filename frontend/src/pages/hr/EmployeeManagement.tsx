@@ -57,11 +57,11 @@ const EmployeeManagement = () => {
     const fetchInitialData = async () => {
       setLoading(true);
       try {
-        // Fetch all required data in parallel
+        // Fetch all required data in parallel - using correct method names
         const [employeesResponse, branchesResponse, departmentsResponse] = await Promise.all([
-          employeeService.getEmployees(),
-          branchService.getAllBranches(),
-          departmentService.getAllDepartments()
+          employeeService.getEmployees(), // Changed back to getEmployees
+          branchService.getAllBranches(), // Changed to getBranches
+          departmentService.getAllDepartments() // Changed to getDepartments
         ]);
 
         // Extract and set employees data
