@@ -659,8 +659,20 @@ const EmployeeManagement = () => {
                         </div>
                       </TableCell>
                       <TableCell>{employee.email}</TableCell>
-                      <TableCell>{departmentMap[employee.departmentId]?.name || 'N/A'}</TableCell>
-                      <TableCell>{branchMap[employee.branchId]?.name || 'N/A'}</TableCell>
+                      <TableCell>
+                        {typeof employee.department === 'string'
+                          ? employee.department
+                          : employee.department
+                          ? employee.department.name
+                          : 'N/A'}
+                      </TableCell>
+                      <TableCell>
+                        {typeof employee.branch === 'string'
+                          ? employee.branch || 'N/A'
+                          : employee.branch
+                          ? employee.branch.name
+                          : 'N/A'}
+                      </TableCell>
                       <TableCell>{employee.position || 'N/A'}</TableCell>
                       <TableCell>
                         <Badge variant={employee.status === 'active' ? 'default' : 'secondary'}>
