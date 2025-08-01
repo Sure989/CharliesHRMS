@@ -57,29 +57,27 @@ const EmployeeManagement = () => {
     const fetchInitialData = async () => {
       setLoading(true);
       try {
-        // Fetch employees first since we know this works
+        // Fetch employees (backend returns array directly)
         const employeesResponse = await employeeService.getEmployees();
-        const employeesData = extractDataFromResponse(employeesResponse);
+        const employeesData = Array.isArray(employeesResponse.data) ? employeesResponse.data : [];
         console.log('Employees data:', employeesData);
-        setEmployees(employeesData);
+        // Map Employee[] to User[] by adding missing 'role' property if needed
+        setEmployees((employeesData as any[]).map(emp => ({ role: 'employee', ...emp })));
 
         // Extract departments from employee data
         const departmentsFromEmployees = employeesData
-          .filter(emp => emp.department)
-          .map(emp => emp.department)
-          .filter((dept, index, self) => 
-            dept && self.findIndex(d => d.id === dept.id) === index
+          .map(emp => typeof emp.department === 'object' && emp.department !== null ? emp.department : null)
+          .filter((dept, index, self): dept is Department => 
+            !!dept && self.findIndex((d): d is Department => !!d && 'id' in d && d.id === dept.id) === index
           );
 
-        // Extract branches from employee data (though most seem to be null)
+        // Extract branches from employee data
         const branchesFromEmployees = employeesData
-          .filter(emp => emp.branch)
-          .map(emp => emp.branch)
-          .filter((branch, index, self) => 
-            branch && self.findIndex(b => b.id === branch.id) === index
+          .map(emp => typeof emp.branch === 'object' && emp.branch !== null ? emp.branch : null)
+          .filter((branch, index, self): branch is Branch => 
+            !!branch && self.findIndex((b): b is Branch => !!b && 'id' in b && b.id === branch.id) === index
           );
 
-        // Set departments and branches state
         setDepartments(departmentsFromEmployees);
         setBranches(branchesFromEmployees);
 
@@ -112,7 +110,7 @@ const EmployeeManagement = () => {
   });
 
   // Filter employees
-  const filteredEmployees = employees.filter(employee =>
+  const filteredEmployees = (employees as User[]).filter((employee: User) =>
     employee &&
     (employee.firstName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     employee.lastName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -174,8 +172,8 @@ const EmployeeManagement = () => {
 
         // Refresh the employee list
         const employeesResponse = await employeeService.getEmployees();
-        const employeesData = extractDataFromResponse(employeesResponse);
-        setEmployees(employeesData);
+        const employeesData = Array.isArray(employeesResponse.data) ? employeesResponse.data : [];
+        setEmployees((employeesData as any[]).map(emp => ({ role: 'employee', ...emp })));
       } else {
         toast({
           title: "Import Failed",
@@ -277,8 +275,8 @@ const EmployeeManagement = () => {
 
       // Refresh the employee list to get full objects
       const employeesResponse = await employeeService.getEmployees();
-      const employeesData = extractDataFromResponse(employeesResponse);
-      setEmployees(employeesData);
+      const employeesData = Array.isArray(employeesResponse.data) ? employeesResponse.data : [];
+      setEmployees((employeesData as any[]).map(emp => ({ role: 'employee', ...emp })));
 
       setNewEmployee({
         employeeId: '',
@@ -347,8 +345,8 @@ const EmployeeManagement = () => {
 
       // Refresh the employee list to get full objects
       const employeesResponse = await employeeService.getEmployees();
-      const employeesData = extractDataFromResponse(employeesResponse);
-      setEmployees(employeesData);
+      const employeesData = Array.isArray(employeesResponse.data) ? employeesResponse.data : [];
+      setEmployees((employeesData as any[]).map(emp => ({ role: 'employee', ...emp })));
 
       setIsEditDialogOpen(false);
       setSelectedEmployee(null);
@@ -586,7 +584,7 @@ const EmployeeManagement = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredEmployees.map((employee) => (
+                  {(filteredEmployees as User[]).map((employee: User) => (
                     <TableRow key={employee.id}>
                       <TableCell className="font-medium">
                         <div>
@@ -596,10 +594,14 @@ const EmployeeManagement = () => {
                       </TableCell>
                       <TableCell>{employee.email}</TableCell>
                       <TableCell>
-                        {employee.department?.name || getDepartmentName(employee.departmentId) || 'N/A'}
+                        {typeof employee.department === 'object' && employee.department !== null && 'name' in employee.department
+                          ? employee.department.name
+                          : getDepartmentName(employee.departmentId) || 'N/A'}
                       </TableCell>
                       <TableCell>
-                        {employee.branch?.name || getBranchName(employee.branchId) || 'N/A'}
+                        {typeof employee.branch === 'object' && employee.branch !== null && 'name' in employee.branch
+                          ? employee.branch.name
+                          : getBranchName(employee.branchId) || 'N/A'}
                       </TableCell>
                       <TableCell>{employee.position || 'N/A'}</TableCell>
                       <TableCell>
