@@ -104,7 +104,12 @@ const OpsManagerSalaryAdvancePage = () => {
           amount: apiReq.requestedAmount ?? apiReq.amount ?? 0,
           disbursementMethod: apiReq.disbursementMethod || apiReq.method || '',
           reason: apiReq.reason || apiReq.purpose || '',
-          status: (apiReq.status || apiReq.currentStatus || '').toLowerCase(),
+          status: (() => {
+            const rawStatus = (apiReq.status || apiReq.currentStatus || '').toLowerCase();
+            // If status is 'pending_ops_initial', show as 'forwarded_to_hr' (Pending HR Review)
+            if (rawStatus === 'pending_ops_initial') return 'forwarded_to_hr';
+            return rawStatus;
+          })(),
           requestDate: apiReq.requestDate || apiReq.createdAt || apiReq.dateRequested || '',
           opsManagerName:
             (apiReq.approver && typeof apiReq.approver === 'object' && (apiReq.approver.firstName || apiReq.approver.firstname) && (apiReq.approver.lastName || apiReq.approver.lastname))
