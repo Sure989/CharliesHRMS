@@ -654,8 +654,8 @@ const EmployeeManagement = () => {
                         </div>
                       </TableCell>
                       <TableCell>{employee.email}</TableCell>
-                      <TableCell>{getDepartmentName(employee.departmentId)}</TableCell>
-                      <TableCell>{getBranchName(employee.branchId)}</TableCell>
+                      <TableCell>{String(employee.department ?? '')}</TableCell>
+                      <TableCell>{String(employee.branch ?? '')}</TableCell>
                       <TableCell>{employee.position || 'N/A'}</TableCell>
                       <TableCell>
                         <Badge variant={employee.status === 'active' ? 'default' : 'secondary'}>
