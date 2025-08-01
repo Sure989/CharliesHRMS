@@ -247,6 +247,7 @@ export async function validateLeaveRequest(
 
   if (!policy) {
     errors.push('No active leave policy found for this leave type');
+    console.log('Validation Error: No active leave policy found.');
     return { isValid: false, errors };
   }
 
@@ -257,6 +258,7 @@ export async function validateLeaveRequest(
 
   if (!employee) {
     errors.push('Employee not found');
+    console.log('Validation Error: Employee not found.');
     return { isValid: false, errors };
   }
 
@@ -267,7 +269,9 @@ export async function validateLeaveRequest(
     );
     
     if (daysSinceHire < policy.probationPeriodDays) {
-      errors.push(`Cannot apply for leave during probation period (${policy.probationPeriodDays} days)`);
+      const msg = `Cannot apply for leave during probation period (${policy.probationPeriodDays} days)`;
+      errors.push(msg);
+      console.log('Validation Error:', msg);
     }
   }
 
@@ -278,16 +282,20 @@ export async function validateLeaveRequest(
     );
     
     if (daysNotice < policy.minDaysNotice) {
-      errors.push(`Minimum ${policy.minDaysNotice} days notice required`);
+      const msg = `Minimum ${policy.minDaysNotice} days notice required`;
+      errors.push(msg);
+      console.log('Validation Error:', msg);
     }
   }
 
-  // Calculate working days for the request
+  // Calculate working days
   const workingDays = await calculateWorkingDays(startDate, endDate, tenantId);
 
   // Check maximum days per request
   if (policy.maxDaysPerRequest && workingDays > policy.maxDaysPerRequest) {
-    errors.push(`Maximum ${policy.maxDaysPerRequest} days allowed per request`);
+    const msg = `Maximum ${policy.maxDaysPerRequest} days allowed per request`;
+    errors.push(msg);
+    console.log('Validation Error:', msg);
   }
 
   // Check available balance
@@ -295,7 +303,9 @@ export async function validateLeaveRequest(
   const balance = await calculateLeaveBalance(employeeId, leaveTypeId, year, tenantId);
   
   if (!policy.allowNegativeBalance && workingDays > balance.available) {
-    errors.push(`Insufficient leave balance. Available: ${balance.available} days, Requested: ${workingDays} days`);
+    const msg = `Insufficient leave balance. Available: ${balance.available} days, Requested: ${workingDays} days`;
+    errors.push(msg);
+    console.log('Validation Error:', msg);
   }
 
   // Check for overlapping requests
@@ -314,9 +324,12 @@ export async function validateLeaveRequest(
   });
 
   if (overlappingRequests.length > 0) {
-    errors.push('Leave request overlaps with existing request');
+    const msg = 'Leave request overlaps with existing request';
+    errors.push(msg);
+    console.log('Validation Error:', msg);
   }
 
+  console.log('Final validation result:', { isValid: errors.length === 0, errors });
   return { isValid: errors.length === 0, errors };
 }
 
