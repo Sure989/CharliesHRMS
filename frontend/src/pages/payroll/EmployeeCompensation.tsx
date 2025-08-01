@@ -177,11 +177,22 @@ const EmployeeCompensation = () => {
     if (!selectedEmployee || !editData) return;
 
     try {
+      // Find department ID from name
+      const department = employees.find(e => e.department === editData.department);
+      if (!department) {
+        toast({
+          title: "Error",
+          description: "Department not found",
+          variant: "destructive"
+        });
+        return;
+      }
+
       // Update employee basic info
       await employeeService.updateEmployee(selectedEmployee.id, {
         firstName: editData.firstName,
         lastName: editData.lastName,
-        department: editData.department,
+        departmentId: department.departmentId,
         position: editData.position,
         salary: editData.payrollInfo?.monthlySalary,
         taxInfo: {

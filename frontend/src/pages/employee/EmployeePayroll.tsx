@@ -129,7 +129,11 @@ const EmployeePayroll = () => {
         });
         return;
       }
-      setEmployeeInfo(employeeData);
+      setEmployeeInfo({
+        ...employeeData,
+        department: typeof employeeData.department === 'string' ? employeeData.department : (employeeData.department?.name || ''),
+        branch: typeof employeeData.branch === 'string' ? employeeData.branch : (employeeData.branch?.name || ''),
+      });
       setPayStubs(Array.isArray(generatedPayStubs) ? generatedPayStubs : []);
       toast({
         title: "Success",
