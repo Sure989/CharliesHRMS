@@ -11,6 +11,8 @@ export interface Employee {
   position: string;
   department: string;
   branch: string;
+  departmentId?: string;
+  branchId?: string;
   hireDate: string;
   status: 'active' | 'inactive' | 'terminated';
   salary?: number;
@@ -118,6 +120,8 @@ class EmployeeService {
       position: emp.position,
       department: typeof emp.department === 'object' ? emp.department?.name || '' : emp.department || '',
       branch: typeof emp.branch === 'object' ? emp.branch?.name || '' : emp.branch || '',
+      departmentId: emp.departmentId,
+      branchId: emp.branchId,
       hireDate: emp.hireDate,
       status: this.mapStatusFromBackend(emp.status),
       salary: emp.salary,
