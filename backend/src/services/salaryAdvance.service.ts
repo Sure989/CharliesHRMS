@@ -273,8 +273,10 @@ export async function createSalaryAdvanceRequest(
       where: { id: employeeId, tenantId },
       select: { branchId: true, position: true },
     });
-    const isBranchManager = employeeRecord?.position === 'OPERATIONS_MANAGER' || employeeRecord?.position === 'BRANCH_MANAGER';
-    if (!employeeRecord?.branchId || isBranchManager) {
+    if (employeeRecord?.position === 'OPERATIONS_MANAGER') {
+      // If the requester is an operations manager, always forward to HR
+      status = 'FORWARDEDTOHR';
+    } else if (!employeeRecord?.branchId || employeeRecord?.position === 'BRANCH_MANAGER') {
       status = 'PENDINGHRREVIEW';
     } else {
       status = 'PENDINGOPREVIEW';
