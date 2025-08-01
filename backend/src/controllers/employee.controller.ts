@@ -66,7 +66,7 @@ export const getEmployees = async (req: Request, res: Response) => {
 
     return res.status(200).json({
       status: 'success',
-      data: employees,
+      data: { employees },
     });
   } catch (error) {
     console.error('Get employees error:', error);
