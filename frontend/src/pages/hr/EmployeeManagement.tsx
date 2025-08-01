@@ -39,18 +39,13 @@ const EmployeeManagement = () => {
     errors: Array<{ row: number; error: string }>;
   } | null>(null);
 
-  // Create lookup maps for departments and branches using useMemo
-  const departmentMap = useMemo(() => Object.fromEntries(departments.map(dept => [dept.id, dept])), [departments]);
-  const branchMap = useMemo(() => Object.fromEntries(branches.map(branch => [branch.id, branch])), [branches]);
 
-  // Merge employee data with department and branch objects
-  const mergeEmployeeData = (employees, departments, branches) => {
-    return employees.map(employee => ({
-      ...employee,
-      department: departmentMap[employee.departmentId] || null,
-      branch: branchMap[employee.branchId] || null
-    }));
-  };
+  // Helper to get department/branch name by id
+  const getDepartmentName = (id: string) => departments.find(d => d.id === id)?.name || '';
+  const getBranchName = (id: string) => branches.find(b => b.id === id)?.name || '';
+
+  // No longer map department and branch to objects; keep API string values
+  const mergeEmployeeData = (employees: User[]) => employees;
 
   // Permission checks
   const canAdd = canAddEmployee(currentUser);
@@ -95,7 +90,7 @@ const EmployeeManagement = () => {
         setBranches(branchesResponse || []);
         setDepartments(departmentsResponse || []);
         // Only set employees after branches and departments are set
-        const mergedEmployees = mergeEmployeeData(employeesAsUsers, departmentsResponse || [], branchesResponse || []);
+        const mergedEmployees = mergeEmployeeData(employeesAsUsers);
         // Debug: log mapped employees with relations
         console.log('Mapped employees with relations:', mergedEmployees);
         setEmployees(mergedEmployees);
@@ -210,7 +205,7 @@ const EmployeeManagement = () => {
             phone: emp.phone || '',
             status: emp.status === 'terminated' ? 'inactive' : (emp.status || 'active')
           }));
-          setEmployees(mergeEmployeeData(employeesAsUsers, departments, branches));
+          setEmployees(mergeEmployeeData(employeesAsUsers));
         }
       } else {
         toast({
@@ -327,7 +322,7 @@ const EmployeeManagement = () => {
         status: response.status === 'terminated' ? 'inactive' : (response.status || 'active')
       };
       // Always map relations after adding
-      setEmployees(prev => mergeEmployeeData([...prev, newUser], departments, branches));
+      setEmployees(prev => mergeEmployeeData([...prev, newUser]));
       setNewEmployee({
         employeeId: '',
         firstName: '',
@@ -411,7 +406,7 @@ const EmployeeManagement = () => {
               }
             : emp
         );
-        return mergeEmployeeData(updated, departments, branches);
+        return mergeEmployeeData(updated);
       });
 
       setIsEditDialogOpen(false);
@@ -659,8 +654,8 @@ const EmployeeManagement = () => {
                         </div>
                       </TableCell>
                       <TableCell>{employee.email}</TableCell>
-                      <TableCell>{typeof employee.department === 'object' && employee.department !== null ? employee.department.name : (employee.department != null ? String(employee.department) : '')}</TableCell>
-                      <TableCell>{typeof employee.branch === 'object' && employee.branch !== null ? employee.branch.name : (employee.branch != null ? String(employee.branch) : '')}</TableCell>
+                      <TableCell>{getDepartmentName(employee.departmentId)}</TableCell>
+                      <TableCell>{getBranchName(employee.branchId)}</TableCell>
                       <TableCell>{employee.position || 'N/A'}</TableCell>
                       <TableCell>
                         <Badge variant={employee.status === 'active' ? 'default' : 'secondary'}>
