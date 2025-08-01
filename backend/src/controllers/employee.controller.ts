@@ -312,7 +312,6 @@ export const updateEmployee = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const {
-      employeeNumber,
       firstName,
       lastName,
       email,
@@ -383,22 +382,7 @@ export const updateEmployee = async (req: Request, res: Response) => {
       }
     }
 
-    // Check if employee number already exists (if being updated)
-    if (employeeNumber && employeeNumber !== existingEmployee.employeeNumber) {
-      const duplicateEmployeeNumber = await prisma.employee.findFirst({
-        where: {
-          employeeNumber,
-          id: { not: id },
-        },
-      });
-
-      if (duplicateEmployeeNumber) {
-        return res.status(409).json({
-          status: 'error',
-          message: 'Employee number already exists',
-        });
-      }
-    }
+    // Employee number cannot be updated via this endpoint
 
     // Check if email already exists (if being updated)
     if (email && email !== existingEmployee.email) {
@@ -420,7 +404,6 @@ export const updateEmployee = async (req: Request, res: Response) => {
     const employee = await prisma.employee.update({
       where: { id },
       data: {
-        ...(employeeNumber && { employeeNumber }),
         ...(firstName && { firstName }),
         ...(lastName && { lastName }),
         ...(email && { email }),

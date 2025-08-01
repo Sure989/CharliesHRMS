@@ -63,7 +63,7 @@ export function loadBusinessConfig(): BusinessConfig {
     hrRole: ConfigValidator.validateString(
       'HR_ROLE',
       process.env.HR_ROLE,
-      'HR',
+      'HR_MANAGER',
       { required: false, enum: ['HR', 'HR_MANAGER', 'HUMAN_RESOURCES'] }
     ),
     hrManagerRole: ConfigValidator.validateString(
