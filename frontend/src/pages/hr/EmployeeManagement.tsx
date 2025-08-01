@@ -64,22 +64,15 @@ const EmployeeManagement = () => {
         // Map Employee[] to User[] by adding missing 'role' property if needed
         setEmployees((employeesData as any[]).map(emp => ({ role: 'employee', ...emp })));
 
-        // Extract departments from employee data
-        const departmentsFromEmployees = employeesData
-          .map(emp => typeof emp.department === 'object' && emp.department !== null ? emp.department : null)
-          .filter((dept, index, self): dept is Department => 
-            !!dept && self.findIndex((d): d is Department => !!d && 'id' in d && d.id === dept.id) === index
-          );
+        // Fetch all departments and branches
+        const departmentsResponse = await departmentService.getAllDepartments();
+        const branchesResponse = await branchService.getAllBranches();
 
-        // Extract branches from employee data
-        const branchesFromEmployees = employeesData
-          .map(emp => typeof emp.branch === 'object' && emp.branch !== null ? emp.branch : null)
-          .filter((branch, index, self): branch is Branch => 
-            !!branch && self.findIndex((b): b is Branch => !!b && 'id' in b && b.id === branch.id) === index
-          );
+        const departmentsData = extractDataFromResponse(departmentsResponse) || [];
+        const branchesData = extractDataFromResponse(branchesResponse) || [];
 
-        setDepartments(departmentsFromEmployees);
-        setBranches(branchesFromEmployees);
+        setDepartments(departmentsData);
+        setBranches(branchesData);
 
       } catch (error) {
         console.error('Error fetching initial data:', error);
