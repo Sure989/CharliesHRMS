@@ -35,6 +35,8 @@ const AdminDashboard = () => {
   const [metrics, setMetrics] = useState({
     totalUsers: 0,
     activeUsers: 0,
+    totalEmployees: 0, // Added for clarity, though not directly displayed as "Total Employees"
+    activeEmployees: 0, // Added for clarity
     totalDepartments: 0,
     totalBranches: 0,
     systemUptime: '99.8%',

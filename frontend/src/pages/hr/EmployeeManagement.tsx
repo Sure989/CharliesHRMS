@@ -60,7 +60,6 @@ const EmployeeManagement = () => {
         // Fetch employees (backend returns array directly)
         const employeesResponse = await employeeService.getEmployees();
         const employeesData = Array.isArray(employeesResponse.data) ? employeesResponse.data : [];
-        console.log('Employees data:', employeesData);
         // Map Employee[] to User[] by adding missing 'role' property if needed
         setEmployees((employeesData as any[]).map(emp => ({ role: 'employee', ...emp })));
 
@@ -75,7 +74,6 @@ const EmployeeManagement = () => {
         setBranches(branchesData);
 
       } catch (error) {
-        console.error('Error fetching initial data:', error);
         toast({
           title: 'Error',
           description: 'Failed to fetch initial data',
@@ -175,7 +173,6 @@ const EmployeeManagement = () => {
         });
       }
     } catch (error) {
-      console.error('Failed to import employees:', error);
       toast({
         title: "Import Failed",
         description: "Failed to import employees. Please check the file format and try again.",

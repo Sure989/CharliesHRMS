@@ -192,7 +192,7 @@ const EmployeeCompensation = () => {
       await employeeService.updateEmployee(selectedEmployee.id, {
         firstName: editData.firstName,
         lastName: editData.lastName,
-        departmentId: department.departmentId,
+        department: department.department,
         position: editData.position,
         salary: editData.payrollInfo?.monthlySalary,
         taxInfo: {

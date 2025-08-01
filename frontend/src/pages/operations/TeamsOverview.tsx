@@ -53,20 +53,11 @@ const TeamsOverview = () => {
   useEffect(() => {
     setLoading(true);
     setError(null);
-    // Log the full user object for debugging
-     
-    console.log('DEBUG TeamsOverview user:', user);
     const branchId = getBranchId(user);
-    // DEBUG: Log branchId used for fetch
-     
-    console.log('DEBUG TeamsOverview branchId:', branchId);
     if (branchId) {
       import('@/services/api/branch.service').then(({ branchService }) => {
         branchService.getBranchEmployees(branchId)
           .then((members) => {
-            // DEBUG: Log the structure of returned members
-             
-            console.log('DEBUG branch members:', members);
             // Defensive: filter only those with correct branchId
             const usersWithRoles = members
               .filter((m) => m.branchId === branchId)
@@ -83,8 +74,6 @@ const TeamsOverview = () => {
             setError('Failed to fetch team members.');
             setUsers([]);
             setLoading(false);
-             
-            console.error('TeamsOverview fetch error:', err);
           });
       });
     } else {
@@ -114,7 +103,7 @@ const TeamsOverview = () => {
         employee.email.toLowerCase().includes(searchTerm.toLowerCase());
       
       const matchesStatus = statusFilter === 'all' || employee.status === statusFilter;
-      const matchesDepartment = departmentFilter === 'all' || employee.department === departmentFilter;
+      const matchesDepartment = departmentFilter === 'all' || String(employee.department) === departmentFilter;
       
       return matchesSearch && matchesStatus && matchesDepartment;
     });
@@ -194,7 +183,7 @@ const TeamsOverview = () => {
                 {employee.position || 'Team Member'} • {employee.employeeNumber}
               </p>
               <p className="text-sm text-muted-foreground mb-3">
-                {employee.department}
+                {String(employee.department)}
               </p>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
@@ -278,7 +267,7 @@ const TeamsOverview = () => {
                   </div>
                 </td>
                 <td className="p-4 text-sm">{employee.position || 'Team Member'}</td>
-                <td className="p-4 text-sm">{employee.department}</td>
+                <td className="p-4 text-sm">{String(employee.department)}</td>
                 <td className="p-4">
                   <Badge className={getStatusColor(employee.status)}>
                     {employee.status || 'active'}
@@ -320,7 +309,7 @@ const TeamsOverview = () => {
     return users.filter(u => {
       const matchesSearch = `${u.firstName} ${u.lastName}`.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesStatus = statusFilter === 'all' || u.status === statusFilter;
-      const matchesDepartment = departmentFilter === 'all' || u.department === departmentFilter;
+      const matchesDepartment = departmentFilter === 'all' || String(u.department) === departmentFilter;
       return matchesSearch && matchesStatus && matchesDepartment && u.role === 'EMPLOYEE';
     });
   }, [users, searchTerm, statusFilter, departmentFilter]);
@@ -430,7 +419,7 @@ const TeamsOverview = () => {
                 <SelectContent>
                   <SelectItem value="all">All Departments</SelectItem>
                   {departments.map((dept) => (
-                    <SelectItem key={dept} value={dept}>{dept}</SelectItem>
+                    <SelectItem key={String(dept)} value={String(dept)}>{String(dept)}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>

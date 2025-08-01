@@ -112,18 +112,14 @@ export async function getDashboardMetrics(tenantId: string = 'default', branchId
 
   // --- Real data (existing) ---
   // ...existing code...
+  const totalUsers = await prisma.user.count({ where: tenantId ? { tenantId } : {} });
+  const activeUsers = await prisma.user.count({ where: tenantId ? { tenantId, status: 'ACTIVE' } : { status: 'ACTIVE' } });
   const totalEmployees = await prisma.employee.count({ where: tenantId ? { tenantId } : {} });
-  // ...existing code...
   const activeEmployees = await prisma.employee.count({ where: tenantId ? { tenantId, status: 'ACTIVE' } : { status: 'ACTIVE' } });
-  // ...existing code...
   const totalDepartments = await prisma.department.count({ where: tenantId ? { tenantId, status: 'ACTIVE' } : { status: 'ACTIVE' } });
-  // ...existing code...
   const totalBranches = await prisma.branch.count({ where: tenantId ? { tenantId, status: 'ACTIVE' } : { status: 'ACTIVE' } });
-  // ...existing code...
   const pendingLeaveRequests = await prisma.leaveRequest.count({ where: leaveWhereClause });
-  // ...existing code...
   const upcomingReviews = await prisma.performanceReview.count({ where: tenantId ? { tenantId, status: { in: ['DRAFT', 'IN_PROGRESS'] } } : { status: { in: ['DRAFT', 'IN_PROGRESS'] } } });
-  // ...existing code...
   const currentMonthPayroll = await prisma.payroll.aggregate({ where: tenantId ? { tenantId, createdAt: { gte: currentMonth } } : { createdAt: { gte: currentMonth } }, _sum: { grossSalary: true } });
   const previousMonthPayroll = await prisma.payroll.aggregate({ where: tenantId ? { tenantId, createdAt: { gte: previousMonth, lt: currentMonth } } : { createdAt: { gte: previousMonth, lt: currentMonth } }, _sum: { grossSalary: true } });
   const currentMonthCost = currentMonthPayroll._sum.grossSalary || 0;
@@ -477,6 +473,8 @@ export async function getDashboardMetrics(tenantId: string = 'default', branchId
     },
     alerts: [], // TODO: Implement alert system when needed
     // ...existing code for legacy fields (for backward compatibility)...
+    totalUsers,
+    activeUsers,
     totalEmployees,
     activeEmployees,
     totalDepartments,

@@ -45,12 +45,7 @@ const OpsManagerSalaryAdvancePage = () => {
       if (!user?.employeeId) return;
       try {
         setLoading(true);
-        console.log('Loading salary advance requests for employeeId:', user.employeeId); // UUID
         const response = await salaryAdvanceService.getSalaryAdvanceRequests({ employeeId: user.employeeId });
-        console.log('Salary advance response:', response);
-        if (response && typeof response === 'object' && response.data) {
-          console.log('response.data:', response.data);
-        }
 
         // Accept multiple possible response shapes robustly
         let responseData: any[] = [];
@@ -85,8 +80,7 @@ const OpsManagerSalaryAdvancePage = () => {
           // If data is an object whose values are the requests
           responseData = Object.values(response.data);
         } else {
-          console.error('Unexpected response shape:', response);
-
+          // Unexpected response shape; no debug log
         }
 
         // Map API response to local type, including HR and final approval fields if present
@@ -106,8 +100,17 @@ const OpsManagerSalaryAdvancePage = () => {
           reason: apiReq.reason || apiReq.purpose || '',
           status: (() => {
             const rawStatus = (apiReq.status || apiReq.currentStatus || '').toLowerCase();
-            // If status is 'pending_ops_initial', show as 'forwarded_to_hr' (Pending HR Review)
-            if (rawStatus === 'pending_ops_initial') return 'forwarded_to_hr';
+            // Map all variants of pending ops review to 'forwarded_to_hr' (Pending HR Review)
+            if (
+              rawStatus === 'pending_ops_initial' ||
+              rawStatus === 'pendingopreview' ||
+              rawStatus === 'pending_opreview' ||
+              rawStatus === 'pendingopreview' ||
+              rawStatus === 'pending op review' ||
+              rawStatus === 'pending opreview'
+            ) {
+              return 'forwarded_to_hr';
+            }
             return rawStatus;
           })(),
           requestDate: apiReq.requestDate || apiReq.createdAt || apiReq.dateRequested || '',
@@ -155,7 +158,6 @@ const OpsManagerSalaryAdvancePage = () => {
         })) : [];
         setRequests(requestsMapped);
       } catch (error) {
-        console.error('Failed to load salary advance requests:', error);
         toast({
           title: "Error",
           description: "Failed to load salary advance requests from the server.",
@@ -186,19 +188,16 @@ const OpsManagerSalaryAdvancePage = () => {
           setEmployeeInfo(null);
           return;
         }
-        console.log('Loading employee info for employeeId:', employeeId); // UUID
         const info = await employeeService.getEmployeeById(employeeId); // UUID
         if (!info || typeof info !== 'object') {
           setMonthlySalary(null);
           setEmployeeInfo(null);
           return;
         }
-        console.log('Employee info loaded:', info);
         setEmployeeInfo(info);
         // Only set salary if it exists in DB, else null
         setMonthlySalary(typeof info?.salary === 'number' ? info.salary : null);
       } catch (error) {
-        console.error('Failed to load employee info:', error);
         setMonthlySalary(null);
         setEmployeeInfo(null);
         // Optionally, show a toast for not found
@@ -377,7 +376,6 @@ const OpsManagerSalaryAdvancePage = () => {
         description: "Your salary advance request has been submitted for approval. The full amount will be deducted from your next salary payment.",
       });
     } catch (error) {
-      console.error('Failed to submit salary advance request:', error);
       toast({
         title: "Error",
         description: "Failed to submit request. Please try again.",
