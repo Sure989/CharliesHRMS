@@ -169,11 +169,11 @@ const LeaveRequests = () => {
     // Validation: warn if not linked to branch or is ops manager
     if (!user?.branch) {
       toast({
-        title: "Warning",
+        title: "Info",
         description: "You are not linked to a branch. Leave approvals will go to HR.",
-        variant: "destructive"
+        variant: "default"
       });
-      return;
+      // Don't return - allow submission to proceed to HR
     }
     if (user?.role === 'OPERATIONS_MANAGER' || user?.position === 'Operations Manager') {
       toast({
