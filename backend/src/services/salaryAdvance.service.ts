@@ -277,7 +277,8 @@ export async function createSalaryAdvanceRequest(
       // If the requester is an operations manager, always forward to HR
       status = 'FORWARDEDTOHR';
     } else if (!employeeRecord?.branchId || employeeRecord?.position === 'BRANCH_MANAGER') {
-      status = 'PENDINGHRREVIEW';
+      // If employee has no branch assignment or is a branch manager, forward to HR
+      status = 'FORWARDEDTOHR';
     } else {
       status = 'PENDINGOPREVIEW';
     }

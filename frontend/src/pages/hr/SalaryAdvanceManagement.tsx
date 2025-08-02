@@ -154,13 +154,11 @@ const SalaryAdvanceManagement: React.FC = () => {
   // Only show requests forwarded to HR as pending for HR, and filter advances to only those relevant for HR
   const hrRelevantAdvances = advances.filter(r => 
     normalizeStatus(r.status) === 'forwardedtohr' || 
-    normalizeStatus(r.status) === 'pendinghreview' ||
     normalizeStatus(r.status) === 'approved' || 
     normalizeStatus(r.status) === 'rejected'
   );
   const hrPendingRequests = hrRelevantAdvances.filter(r => 
-    normalizeStatus(r.status) === 'forwardedtohr' || 
-    normalizeStatus(r.status) === 'pendinghreview'
+    normalizeStatus(r.status) === 'forwardedtohr'
   );
   const hrApprovedRequests = hrRelevantAdvances.filter(r => normalizeStatus(r.status) === 'approved');
   const hrRejectedRequests = hrRelevantAdvances.filter(r => normalizeStatus(r.status) === 'rejected');
@@ -180,7 +178,6 @@ const SalaryAdvanceManagement: React.FC = () => {
     const norm = normalizeStatus(status);
     switch (norm) {
       case 'forwardedtohr':
-      case 'pendinghreview':
         return <Badge variant="outline" className="bg-yellow-100 text-yellow-800">Pending HR Review</Badge>;
       case 'approved':
         return <Badge variant="default" className="bg-green-500">HR Approved</Badge>;
