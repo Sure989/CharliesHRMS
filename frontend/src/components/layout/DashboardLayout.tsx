@@ -25,7 +25,8 @@ import {
   DollarSign,
   Settings,
   Calculator,
-  UserCog
+  UserCog,
+  Wrench
 } from "lucide-react";
 import NotificationCenter from '@/components/NotificationCenter';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
@@ -50,6 +51,7 @@ const DashboardLayout = ({ children, title }: DashboardLayoutProps) => {
         { name: 'Security', href: '/admin/security', icon: Shield },
         { name: 'Workflows', href: '/admin/workflows', icon: Settings },
         { name: 'Integrations', href: '/admin/integrations', icon: TrendingUp },
+        { name: 'System Debug', href: '/admin/debug', icon: Wrench },
         { name: 'HR Management', href: '/hr/dashboard', icon: Building },
         { name: 'Payroll Management', href: '/payroll/dashboard', icon: Calculator },
       ];

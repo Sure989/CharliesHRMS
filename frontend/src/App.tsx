@@ -16,6 +16,7 @@ import SecurityManagement from "@/pages/admin/SecurityManagement";
 import SalaryAdvanceOverview from "@/pages/admin/SalaryAdvanceOverview";
 import WorkflowDashboard from "@/pages/admin/WorkflowDashboard";
 import IntegrationDashboard from "@/pages/admin/IntegrationDashboard";
+import SystemDebugTool from "@/components/debug/SystemDebugTool";
 // AdvancedAnalytics import removed (feature deprecated)
 // Testing components removed
 import HRDashboard from "@/pages/hr/HRDashboard";
@@ -106,6 +107,11 @@ const App = () => {
                     <Route path="branches" element={
                       <ProtectedRoute requiredPermissions={[PERMISSIONS.HR_MANAGE_BRANCHES]}>
                         <BranchManagement />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="debug" element={
+                      <ProtectedRoute requiredPermissions={[PERMISSIONS.ADMIN_FULL_ACCESS]}>
+                        <SystemDebugTool />
                       </ProtectedRoute>
                     } />
                     <Route path="employees" element={

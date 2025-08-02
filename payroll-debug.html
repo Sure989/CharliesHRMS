@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HRMS Payroll Debug Tool</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .header {
+            background: #2563eb;
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .step {
+            border-left: 4px solid #10b981;
+            padding-left: 15px;
+            margin: 15px 0;
+        }
+        .error {
+            border-left: 4px solid #ef4444;
+            background: #fef2f2;
+            padding: 10px 15px;
+            border-radius: 4px;
+        }
+        .success {
+            border-left: 4px solid #10b981;
+            background: #f0fdf4;
+            padding: 10px 15px;
+            border-radius: 4px;
+        }
+        .warning {
+            border-left: 4px solid #f59e0b;
+            background: #fffbeb;
+            padding: 10px 15px;
+            border-radius: 4px;
+        }
+        button {
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background: #1d4ed8;
+        }
+        button:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+        }
+        .results {
+            background: #f8fafc;
+            padding: 15px;
+            border-radius: 6px;
+            border: 1px solid #e2e8f0;
+            margin: 10px 0;
+        }
+        pre {
+            background: #1f2937;
+            color: #f9fafb;
+            padding: 15px;
+            border-radius: 6px;
+            overflow-x: auto;
+        }
+        .employee-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 10px;
+            margin: 10px 0;
+        }
+        .employee-card {
+            background: #f8fafc;
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid #e2e8f0;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🔍 HRMS Payroll Debug Tool</h1>
+        <p>Safe read-only diagnostics for payroll processing issues</p>
+    </div>
+
+    <div class="container">
+        <h2>Instructions</h2>
+        <p><strong>This tool is completely safe:</strong></p>
+        <ul>
+            <li>✅ Only reads data from your system</li>
+            <li>✅ Makes the same API calls as your normal app</li>
+            <li>✅ Shows why only 1 employee appears instead of 4</li>
+            <li>✅ Won't modify or break anything</li>
+        </ul>
+        <button id="startDebug">🚀 Start Diagnosis</button>
+    </div>
+
+    <div id="results"></div>
+
+    <script>
+        const API_BASE = 'https://charlies-hrms-backend.vercel.app/api';
+        const TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI3MzhlZGJhMy01OGRkLTQwYWEtOWJlMC0zN2Y1NDIyZmM4NDYiLCJyb2xlIjoiSFJfTUFOQUdFUiIsInRlbmFudElkIjoiNWJiYTZmMTQtYWNjZi00ZTY0LWI4NWMtZGI0ZDNmYTljODQ4IiwiaWF0IjoxNzU0MTA1NjM1LCJleHAiOjE3NTQxOTIwMzV9.KyFu6DyGw7X4MmPAEVIotbVb5oXVtfcjKLEc8HngmPM';
+
+        function addResult(title, content, type = 'results') {
+            const div = document.createElement('div');
+            div.className = `container ${type}`;
+            div.innerHTML = `<h3>${title}</h3>${content}`;
+            document.getElementById('results').appendChild(div);
+        }
+
+        function addEmployeeCard(employee) {
+            return `
+                <div class="employee-card">
+                    <strong>${employee.firstName} ${employee.lastName}</strong><br>
+                    Salary: KES ${employee.salary || 0}<br>
+                    Status: ${employee.status}<br>
+                    ID: ${employee.employeeNumber}
+                </div>
+            `;
+        }
+
+        async function apiCall(endpoint, options = {}) {
+            try {
+                const response = await fetch(`${API_BASE}${endpoint}`, {
+                    headers: {
+                        'Authorization': `Bearer ${TOKEN}`,
+                        'Content-Type': 'application/json',
+                        ...options.headers
+                    },
+                    ...options
+                });
+                return await response.json();
+            } catch (error) {
+                throw new Error(`API Error: ${error.message}`);
+            }
+        }
+
+        async function runDiagnosis() {
+            const button = document.getElementById('startDebug');
+            button.disabled = true;
+            button.textContent = '🔄 Running Diagnosis...';
+            
+            document.getElementById('results').innerHTML = '';
+
+            try {
+                // Step 1: Check Employees
+                addResult('📊 Step 1: Checking Employee Data', '<p>Fetching all employees...</p>');
+                const employeesData = await apiCall('/employees');
+                
+                if (employeesData.status === 'success' && employeesData.data) {
+                    const allEmployees = employeesData.data;
+                    const employeesWithSalary = allEmployees.filter(emp => emp.salary && emp.salary > 0);
+                    
+                    let employeeHtml = `
+                        <div class="success">
+                            <strong>✅ Found ${allEmployees.length} total employees</strong><br>
+                            <strong>💰 ${employeesWithSalary.length} employees have salaries configured</strong>
+                        </div>
+                        <h4>Employees with Salaries:</h4>
+                        <div class="employee-list">
+                            ${employeesWithSalary.map(emp => addEmployeeCard(emp)).join('')}
+                        </div>
+                    `;
+                    
+                    if (employeesWithSalary.length !== 4) {
+                        employeeHtml += `
+                            <div class="error">
+                                <strong>❌ ISSUE FOUND:</strong> Expected 4 employees with salaries, but found ${employeesWithSalary.length}
+                            </div>
+                        `;
+                    }
+                    
+                    addResult('📊 Step 1 Results: Employee Data', employeeHtml);
+                } else {
+                    addResult('📊 Step 1 Results: Employee Data', 
+                        `<div class="error">❌ Failed to fetch employees: ${employeesData.message}</div>`, 'error');
+                }
+
+                // Step 2: Check Payroll Periods
+                addResult('📅 Step 2: Checking Payroll Periods', '<p>Fetching payroll periods...</p>');
+                const periodsData = await apiCall('/payroll/periods');
+                
+                let currentPeriod = null;
+                if (periodsData.status === 'success' && periodsData.data && periodsData.data.length > 0) {
+                    currentPeriod = periodsData.data[0];
+                    addResult('📅 Step 2 Results: Payroll Periods', `
+                        <div class="success">
+                            ✅ Found ${periodsData.data.length} payroll periods<br>
+                            <strong>Current Period:</strong> ${currentPeriod.name}<br>
+                            <strong>Period ID:</strong> ${currentPeriod.id}<br>
+                            <strong>Pay Date:</strong> ${currentPeriod.payDate}
+                        </div>
+                    `);
+                } else {
+                    addResult('📅 Step 2 Results: Payroll Periods', 
+                        `<div class="error">❌ No payroll periods found</div>`, 'error');
+                    return;
+                }
+
+                // Step 3: Check Existing Payroll Records
+                addResult('💼 Step 3: Checking Existing Payroll Records', '<p>Fetching payroll records for current period...</p>');
+                const recordsData = await apiCall(`/payroll/records?periodId=${currentPeriod.id}`);
+                
+                if (recordsData.status === 'success') {
+                    const records = recordsData.data || [];
+                    let recordsHtml = `
+                        <div class="${records.length === 4 ? 'success' : records.length === 1 ? 'warning' : 'error'}">
+                            <strong>📋 Found ${records.length} payroll records for this period</strong>
+                        </div>
+                    `;
+                    
+                    if (records.length > 0) {
+                        recordsHtml += '<h4>Existing Payroll Records:</h4>';
+                        records.forEach((record, i) => {
+                            recordsHtml += `
+                                <div class="employee-card">
+                                    <strong>Record ${i + 1}:</strong> ${record.employee?.firstName || 'Unknown'} ${record.employee?.lastName || 'Employee'}<br>
+                                    Gross Salary: KES ${record.grossSalary}<br>
+                                    Net Salary: KES ${record.netSalary}<br>
+                                    Status: ${record.status}
+                                </div>
+                            `;
+                        });
+                        
+                        if (records.length === 1) {
+                            recordsHtml += `
+                                <div class="warning">
+                                    <strong>⚠️ ISSUE FOUND:</strong> Only 1 payroll record exists, but 4 employees have salaries!
+                                </div>
+                            `;
+                        }
+                    }
+                    
+                    addResult('💼 Step 3 Results: Existing Payroll Records', recordsHtml);
+                }
+
+                // Step 4: Try Bulk Processing to See What Happens
+                addResult('⚙️ Step 4: Testing Bulk Payroll Processing', '<p>Attempting bulk processing to see detailed results...</p>');
+                const processData = await apiCall(`/payroll/periods/${currentPeriod.id}/process-all`, { method: 'POST' });
+                
+                if (processData.status === 'success' && processData.data && processData.data.results) {
+                    const { processed, skipped, errors, details } = processData.data.results;
+                    
+                    let processHtml = `
+                        <div class="success">
+                            <strong>📊 Processing Results:</strong><br>
+                            ✅ Processed: ${processed}<br>
+                            ⏭️ Skipped: ${skipped}<br>
+                            ❌ Errors: ${errors}
+                        </div>
+                        <h4>Detailed Results:</h4>
+                    `;
+                    
+                    details.forEach(detail => {
+                        const statusIcon = detail.status === 'processed' ? '✅' : 
+                                         detail.status === 'skipped' ? '⏭️' : '❌';
+                        processHtml += `
+                            <div class="employee-card">
+                                ${statusIcon} <strong>${detail.name}</strong><br>
+                                Status: ${detail.status}<br>
+                                ${detail.reason ? `Reason: ${detail.reason}<br>` : ''}
+                                ${detail.netSalary ? `Net Salary: KES ${detail.netSalary}` : ''}
+                            </div>
+                        `;
+                    });
+                    
+                    addResult('⚙️ Step 4 Results: Bulk Processing', processHtml);
+                } else {
+                    addResult('⚙️ Step 4 Results: Bulk Processing', 
+                        `<div class="error">❌ Bulk processing failed: ${processData.message}</div>`, 'error');
+                }
+
+                // Final Diagnosis
+                addResult('🔬 Final Diagnosis', `
+                    <h4>Summary & Next Steps:</h4>
+                    <p>Based on the results above, we can now identify the exact cause of why only 1 employee appears in payroll processing instead of all 4.</p>
+                    <div class="warning">
+                        <strong>Review the results above to determine:</strong><br>
+                        • Are all 4 employees configured with salaries?<br>
+                        • Are 3 employees being skipped because payroll already exists?<br>
+                        • Are 3 employees failing due to processing errors?<br>
+                        • Is this a frontend display issue?
+                    </div>
+                `);
+
+            } catch (error) {
+                addResult('❌ Diagnosis Failed', `
+                    <div class="error">
+                        <strong>Error during diagnosis:</strong><br>
+                        ${error.message}
+                    </div>
+                `, 'error');
+            } finally {
+                button.disabled = false;
+                button.textContent = '🔄 Run Again';
+            }
+        }
+
+        document.getElementById('startDebug').addEventListener('click', runDiagnosis);
+    </script>
+</body>
+</html>
