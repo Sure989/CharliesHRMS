@@ -73,15 +73,19 @@ const PayrollProcessing = () => {
         // Fetch payroll records for the period
         const recordsRes = await payrollService.getPayrollRecords({ periodId: active.id });
         let records = recordsRes.data || [];
-        // Normalize: handle { payrolls: [...] } or array directly
-        if (records && typeof records === 'object' && 'payrolls' in records) {
-          records = Array.isArray(records.payrolls) ? records.payrolls : [];
+        
+        console.log('Raw payroll records response:', recordsRes);
+        console.log('Extracted records:', records);
+        
+        // The backend returns { status: 'success', data: [...], pagination: {...} }
+        // So we need to use recordsRes.data directly
+        if (Array.isArray(records)) {
+          setPayrollRecords(records);
+          console.log(`Set ${records.length} payroll records`);
+        } else {
+          console.error('Payroll records is not an array:', records);
+          setPayrollRecords([]);
         }
-        // If records is array of objects with nested 'payroll', flatten
-        if (Array.isArray(records) && records.length > 0 && typeof records[0] === 'object' && records[0] !== null && 'payroll' in records[0]) {
-          records = records.map((r: any) => r.payroll);
-        }
-        setPayrollRecords(records);
       } else {
         setPayrollRecords([]);
       }
@@ -104,14 +108,14 @@ const PayrollProcessing = () => {
     try {
       if (period) {
         const recordsRes = await payrollService.getPayrollRecords({ periodId: period.id });
-        let records = recordsRes.data || [];
-        if (records && typeof records === 'object' && 'payrolls' in records) {
-          records = Array.isArray(records.payrolls) ? records.payrolls : [];
+        const records = recordsRes.data || [];
+        console.log('Period switch - loaded records:', records);
+        if (Array.isArray(records)) {
+          setPayrollRecords(records);
+        } else {
+          console.error('Period switch - records is not an array:', records);
+          setPayrollRecords([]);
         }
-        if (Array.isArray(records) && records.length > 0 && typeof records[0] === 'object' && records[0] !== null && 'payroll' in records[0]) {
-          records = records.map((r: any) => r.payroll);
-        }
-        setPayrollRecords(records);
       } else {
         setPayrollRecords([]);
       }
@@ -232,7 +236,15 @@ const PayrollProcessing = () => {
       toast({ title: 'Payroll processed for period' });
       // Refresh payroll records
       const recordsRes = await payrollService.getPayrollRecords({ periodId: currentPeriod.id });
-      setPayrollRecords(recordsRes.data || []);
+      const refreshedRecords = recordsRes.data || [];
+      console.log('Refreshed payroll records after processing:', refreshedRecords);
+      if (Array.isArray(refreshedRecords)) {
+        setPayrollRecords(refreshedRecords);
+        console.log(`Refreshed to ${refreshedRecords.length} payroll records`);
+      } else {
+        console.error('Refreshed payroll records is not an array:', refreshedRecords);
+        setPayrollRecords([]);
+      }
     } catch (err: any) {
       toast({ title: 'Failed to process payroll', description: err.message || String(err), variant: 'destructive' });
     } finally {
@@ -545,7 +557,12 @@ const PayrollProcessing = () => {
                                   // Refresh payroll records
                                   if (currentPeriod) {
                                     const recordsRes = await payrollService.getPayrollRecords({ periodId: currentPeriod.id });
-                                    setPayrollRecords(recordsRes.data || []);
+                                    const records = recordsRes.data || [];
+                                    if (Array.isArray(records)) {
+                                      setPayrollRecords(records);
+                                    } else {
+                                      setPayrollRecords([]);
+                                    }
                                   }
                                 } catch (err: any) {
                                   toast({ title: 'Failed to delete payroll record', description: err.message || String(err), variant: 'destructive' });
@@ -570,7 +587,12 @@ const PayrollProcessing = () => {
                                   // Refresh payroll records
                                   if (currentPeriod) {
                                     const recordsRes = await payrollService.getPayrollRecords({ periodId: currentPeriod.id });
-                                    setPayrollRecords(recordsRes.data || []);
+                                    const records = recordsRes.data || [];
+                                    if (Array.isArray(records)) {
+                                      setPayrollRecords(records);
+                                    } else {
+                                      setPayrollRecords([]);
+                                    }
                                   }
                                 } catch (err: any) {
                                   toast({ title: 'Failed to process payroll', description: err.message || String(err), variant: 'destructive' });
