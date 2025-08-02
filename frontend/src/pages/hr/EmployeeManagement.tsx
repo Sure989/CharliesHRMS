@@ -211,7 +211,7 @@ const EmployeeManagement = () => {
   };
 
   // Form validation
-  const validateForm = (employeeData: typeof newEmployee): Record<string, string> => {
+  const validateForm = (employeeData: typeof newEmployee, excludeEmployeeId?: string): Record<string, string> => {
     const errors: Record<string, string> = {};
     
     if (!employeeData.employeeId.trim()) errors.employeeId = 'Employee ID is required';
@@ -228,13 +228,13 @@ const EmployeeManagement = () => {
       errors.email = 'Please enter a valid email address';
     }
     
-    // Check for duplicate employee ID
-    if (employeeData.employeeId && employees.some(emp => emp.employeeId === employeeData.employeeId)) {
+    // Check for duplicate employee ID (exclude current employee when editing)
+    if (employeeData.employeeId && employees.some(emp => emp.employeeId === employeeData.employeeId && emp.id !== excludeEmployeeId)) {
       errors.employeeId = 'Employee ID already exists';
     }
     
-    // Check for duplicate email
-    if (employeeData.email && employees.some(emp => emp.email === employeeData.email)) {
+    // Check for duplicate email (exclude current employee when editing)
+    if (employeeData.email && employees.some(emp => emp.email === employeeData.email && emp.id !== excludeEmployeeId)) {
       errors.email = 'Email already exists';
     }
     
@@ -314,7 +314,7 @@ const EmployeeManagement = () => {
   const handleUpdateEmployee = async () => {
     if (!selectedEmployee) return;
 
-    const errors = validateForm(newEmployee);
+    const errors = validateForm(newEmployee, selectedEmployee.id);
     setFormErrors(errors);
     
     if (Object.keys(errors).length > 0) return;
