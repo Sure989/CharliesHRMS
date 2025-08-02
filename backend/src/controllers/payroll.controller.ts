@@ -2199,8 +2199,35 @@ export const deletePayrollRecordsByPeriod = async (req: Request, res: Response) 
 
     console.log(`Deleting payroll records for period ${periodId} in tenant ${req.tenantId}`);
 
-    // Delete all payroll records for this period
-    const deleteResult = await prisma.payroll.deleteMany({
+    // Delete in the correct order to avoid foreign key constraint violations
+    // 1. First delete PayStub records
+    const payStubDeleteResult = await prisma.payStub.deleteMany({
+      where: { 
+        payrollPeriodId: periodId,
+        tenant: {
+          id: req.tenantId
+        }
+      },
+    });
+
+    console.log(`Deleted ${payStubDeleteResult.count} pay stub records`);
+
+    // 2. Then delete PayrollItem records
+    const payrollItemDeleteResult = await prisma.payrollItem.deleteMany({
+      where: { 
+        payroll: {
+          payrollPeriodId: periodId,
+          employee: {
+            tenantId: req.tenantId
+          }
+        }
+      },
+    });
+
+    console.log(`Deleted ${payrollItemDeleteResult.count} payroll item records`);
+
+    // 3. Finally delete Payroll records
+    const payrollDeleteResult = await prisma.payroll.deleteMany({
       where: { 
         payrollPeriodId: periodId,
         employee: {
@@ -2209,12 +2236,14 @@ export const deletePayrollRecordsByPeriod = async (req: Request, res: Response) 
       },
     });
 
-    console.log(`Deleted ${deleteResult.count} payroll records for period ${periodId}`);
+    console.log(`Deleted ${payrollDeleteResult.count} payroll records for period ${periodId}`);
+
+    const totalDeleted = payStubDeleteResult.count + payrollItemDeleteResult.count + payrollDeleteResult.count;
 
     return res.status(200).json({ 
       status: 'success', 
-      message: `Successfully deleted ${deleteResult.count} payroll records`,
-      data: { deleted: deleteResult.count }
+      message: `Successfully deleted ${totalDeleted} records (${payStubDeleteResult.count} pay stubs, ${payrollItemDeleteResult.count} payroll items, ${payrollDeleteResult.count} payroll records)`,
+      data: { deleted: totalDeleted }
     });
 
   } catch (error) {
