@@ -18,7 +18,7 @@ import { employeeService, Employee } from '@/services/api/employee.service';
 import { branchService } from '@/services/api/branch.service';
 import { departmentService } from '@/services/api/department.service';
 import { extractDataFromResponse } from '@/utils/api-helpers';
-import { normalizeDateForInput, normalizeToISO, formatDateSafe } from '@/utils/dateUtils';
+import { normalizeDateForInput, normalizeToISO, formatDateSafe, getCurrentDateString } from '@/utils/dateUtils';
 
 const EmployeeManagement = () => {
   const { toast } = useToast();
@@ -297,16 +297,28 @@ const EmployeeManagement = () => {
   };
 
   const handleEditEmployee = (employee: User) => {
+    console.log('Debug - employee object:', employee);
+    console.log('Debug - employee.hireDate:', employee.hireDate);
+    console.log('Debug - employee.branchId:', employee.branchId);
+    console.log('Debug - employee.branch:', employee.branch);
+    
     setSelectedEmployee(employee);
+    
+    // Handle branch ID - check if it's in branchId or nested in branch object
+    const branchId = employee.branchId || (typeof employee.branch === 'object' && employee.branch?.id) || '';
+    
+    // Handle hire date - ensure we always have a valid date
+    const hireDate = normalizeDateForInput(employee.hireDate) || getCurrentDateString();
+    
     setNewEmployee({
       employeeId: employee.employeeId || '',
       firstName: employee.firstName || '',
       lastName: employee.lastName || '',
       email: employee.email || '',
-      branchId: employee.branchId || '',
+      branchId: branchId,
       departmentId: employee.departmentId || '',
       position: employee.position || '',
-      hireDate: normalizeDateForInput(employee.hireDate) || '',
+      hireDate: hireDate,
       phone: employee.phone || ''
     });
     setIsEditDialogOpen(true);
@@ -316,7 +328,9 @@ const EmployeeManagement = () => {
     if (!selectedEmployee) return;
 
     console.log('Debug - newEmployee data:', newEmployee);
+    console.log('Debug - selectedEmployee:', selectedEmployee);
     console.log('Debug - hireDate original:', selectedEmployee.hireDate);
+    console.log('Debug - hireDate in newEmployee:', newEmployee.hireDate);
     console.log('Debug - hireDate normalized:', normalizeDateForInput(selectedEmployee.hireDate));
     console.log('Debug - hireDate for API:', normalizeToISO(newEmployee.hireDate));
 
