@@ -10,6 +10,7 @@ import {
   getEmployeePayroll,
   importEmployees,
   exportEmployees,
+  getEmployeeByEmployeeNumber,
 } from '../controllers/employee.controller';
 import { getEmployeeActivity, getTrainingProgress } from '../controllers/employeeExtras.controller';
 import { authenticate, restrictTo } from '../middleware/auth.middleware';
@@ -25,6 +26,13 @@ const router = Router();
 
 // Apply authentication middleware to all routes
 router.use(authenticate);
+
+/**
+ * @route GET /api/employees/by-employee-id/:employeeId
+ * @desc Get employee by employee ID (not database ID)
+ * @access Private (All authenticated users)
+ */
+router.get('/by-employee-id/:employeeId', getEmployeeByEmployeeNumber);
 
 /**
  * @route GET /api/employees
@@ -81,14 +89,6 @@ router.get('/:id/leave', getEmployeeLeave);
  * @access Private (Admin, HR Manager)
  */
 router.get('/:id/payroll', getEmployeePayroll);
-
-/**
- * @route GET /api/employees/by-employee-id/:employeeId
- * @desc Get employee by employee ID (not database ID)
- * @access Private (All authenticated users)
- */
-import { getEmployeeByEmployeeNumber } from '../controllers/employee.controller';
-router.get('/by-employee-id/:employeeId', getEmployeeByEmployeeNumber);
 
 /**
  * @route GET /api/employees/department/:department

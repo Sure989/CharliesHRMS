@@ -177,36 +177,40 @@ const EmployeeCompensation = () => {
     if (!selectedEmployee || !editData) return;
 
     try {
-      // Find department ID from name
-      const department = employees.find(e => e.department === editData.department);
-      if (!department) {
-        toast({
-          title: "Error",
-          description: "Department not found",
-          variant: "destructive"
-        });
-        return;
+      console.log('Updating employee:', selectedEmployee.id, editData);
+      
+      // Prepare update data - only include fields that have values
+      const updateData: any = {};
+      
+      if (editData.firstName) updateData.firstName = editData.firstName;
+      if (editData.lastName) updateData.lastName = editData.lastName;
+      if (editData.position) updateData.position = editData.position;
+      if (editData.payrollInfo?.monthlySalary) updateData.salary = editData.payrollInfo.monthlySalary;
+      
+      // Only include tax info if any field has a value
+      if (editData.payrollInfo?.kraPin || editData.payrollInfo?.nssfNumber || editData.payrollInfo?.nhifNumber) {
+        updateData.taxInfo = {
+          kraPin: editData.payrollInfo?.kraPin || '',
+          nssfNumber: editData.payrollInfo?.nssfNumber || '',
+          nhifNumber: editData.payrollInfo?.nhifNumber || ''
+        };
       }
 
-      // Update employee basic info
-      await employeeService.updateEmployee(selectedEmployee.id, {
-        firstName: editData.firstName,
-        lastName: editData.lastName,
-        department: department.department,
-        position: editData.position,
-        salary: editData.payrollInfo?.monthlySalary,
-        taxInfo: {
-          kraPin: editData.payrollInfo?.kraPin,
-          nssfNumber: editData.payrollInfo?.nssfNumber,
-          nhifNumber: editData.payrollInfo?.nhifNumber
-        },
-        bankDetails: editData.payrollInfo?.bankAccount ? {
-          bankName: editData.payrollInfo.bankAccount.bankName,
-          accountNumber: editData.payrollInfo.bankAccount.accountNumber,
-          branchCode: editData.payrollInfo.bankAccount.branchCode,
+      // Only include bank details if they exist
+      if (editData.payrollInfo?.bankAccount && 
+          (editData.payrollInfo.bankAccount.bankName || editData.payrollInfo.bankAccount.accountNumber)) {
+        updateData.bankDetails = {
+          bankName: editData.payrollInfo.bankAccount.bankName || '',
+          accountNumber: editData.payrollInfo.bankAccount.accountNumber || '',
+          branchCode: editData.payrollInfo.bankAccount.branchCode || '001',
           accountType: 'savings'
-        } : undefined
-      });
+        };
+      }
+
+      console.log('Update data being sent:', updateData);
+
+      // Update employee basic info
+      await employeeService.updateEmployee(selectedEmployee.id, updateData);
 
       toast({
         title: "Success",

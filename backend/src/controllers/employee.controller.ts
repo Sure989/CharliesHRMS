@@ -324,7 +324,11 @@ export const updateEmployee = async (req: Request, res: Response) => {
       hireDate,
       terminationDate,
       status,
+      taxInfo,
+      bankDetails,
     } = req.body;
+
+    console.log('Update employee request:', { id, body: req.body, tenantId: req.tenantId });
 
     if (!req.tenantId) {
       return res.status(401).json({
@@ -340,6 +344,8 @@ export const updateEmployee = async (req: Request, res: Response) => {
         tenantId: req.tenantId,
       },
     });
+
+    console.log('Existing employee found:', !!existingEmployee);
 
     if (!existingEmployee) {
       return res.status(404).json({
@@ -416,6 +422,8 @@ export const updateEmployee = async (req: Request, res: Response) => {
         ...(hireDate && { hireDate: new Date(hireDate) }),
         ...(terminationDate !== undefined && { terminationDate: terminationDate ? new Date(terminationDate) : null }),
         ...(status && { status: typeof status === 'string' ? status.toUpperCase() : status }),
+        ...(taxInfo && { taxInfo }),
+        ...(bankDetails && { bankDetails }),
       },
       include: {
         department: {
@@ -432,6 +440,8 @@ export const updateEmployee = async (req: Request, res: Response) => {
         },
       },
     });
+
+    console.log('Employee updated successfully:', employee.id);
 
     return res.status(200).json({
       status: 'success',
