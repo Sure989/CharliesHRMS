@@ -24,7 +24,8 @@ import {
   Eye,
   Edit,
   RefreshCw,
-  Calendar
+  Calendar,
+  Trash2
 } from 'lucide-react';
 import { payrollService } from '@/services/api/payroll.service';
 import { formatCurrencyCompact } from '@/utils/currency';
@@ -257,6 +258,46 @@ const PayrollProcessing = () => {
     await animateStepperAndProcess();
   };
 
+  // Delete all payroll records for current period
+  const handleDeleteAllRecords = async () => {
+    if (!currentPeriod) {
+      toast({ title: 'No period selected', variant: 'destructive' });
+      return;
+    }
+
+    const confirmation = window.confirm(
+      `Are you sure you want to delete ALL payroll records for period "${currentPeriod.name}"? This action cannot be undone.`
+    );
+
+    if (!confirmation) return;
+
+    setLoading(true);
+    try {
+      await payrollService.deletePayrollRecordsByPeriod(currentPeriod.id);
+      toast({ 
+        title: 'Records deleted', 
+        description: `All payroll records for period "${currentPeriod.name}" have been deleted.`
+      });
+      
+      // Refresh payroll records
+      const recordsRes = await payrollService.getPayrollRecords({ periodId: currentPeriod.id });
+      const records = recordsRes.data || [];
+      if (Array.isArray(records)) {
+        setPayrollRecords(records);
+      } else {
+        setPayrollRecords([]);
+      }
+    } catch (err: any) {
+      toast({ 
+        title: 'Failed to delete records', 
+        description: err.message || String(err), 
+        variant: 'destructive' 
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <DashboardLayout title="Payroll Processing">
       {/* Calendar dropdown visibility and color fix for dark mode */}
@@ -448,8 +489,24 @@ const PayrollProcessing = () => {
           <TabsContent value="employees">
             <Card>
               <CardHeader>
-                <CardTitle>Employee Payroll Records</CardTitle>
-                <CardDescription>Payroll calculations for each employee in the selected period.</CardDescription>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>Employee Payroll Records</CardTitle>
+                    <CardDescription>Payroll calculations for each employee in the selected period.</CardDescription>
+                  </div>
+                  {payrollRecords.length > 0 && (
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={handleDeleteAllRecords}
+                      disabled={loading}
+                      className="flex items-center gap-2"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      Delete All Records
+                    </Button>
+                  )}
+                </div>
               </CardHeader>
               <CardContent>
                 {loading ? (

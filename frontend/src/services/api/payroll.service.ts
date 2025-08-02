@@ -693,6 +693,24 @@ class PayrollService {
       throw error;
     }
   }
+
+  /**
+   * Delete all payroll records for a specific period
+   */
+  async deletePayrollRecordsByPeriod(periodId: string): Promise<{ deleted: number }> {
+    try {
+      const response = await apiClient.delete<{ deleted: number }>(`/payroll/periods/${periodId}/records`);
+      
+      if (response.status === 'success' && response.data) {
+        return response.data;
+      }
+      
+      throw new Error(response.message || 'Failed to delete payroll records');
+    } catch (error) {
+      console.error('Delete payroll records error:', error);
+      throw error;
+    }
+  }
 }
 
 // Export singleton instance
