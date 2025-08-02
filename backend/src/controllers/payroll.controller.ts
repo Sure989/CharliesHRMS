@@ -2168,3 +2168,60 @@ export const downloadPayrollReport = async (req: Request, res: Response) => {
     return res.status(500).json({ status: 'error', message: 'Internal server error while downloading payroll report' });
   }
 };
+
+/**
+ * Delete all payroll records for a specific period
+ * @route DELETE /api/payroll/period/:periodId/records
+ */
+export const deletePayrollRecordsByPeriod = async (req: Request, res: Response) => {
+  try {
+    const { periodId } = req.params;
+    
+    if (!req.tenantId) {
+      return res.status(401).json({ status: 'error', message: 'Tenant ID is required' });
+    }
+
+    if (!periodId) {
+      return res.status(400).json({ status: 'error', message: 'Period ID is required' });
+    }
+
+    // Verify the period exists and belongs to the tenant
+    const period = await prisma.payrollPeriod.findFirst({
+      where: { 
+        id: periodId, 
+        tenantId: req.tenantId 
+      },
+    });
+
+    if (!period) {
+      return res.status(404).json({ status: 'error', message: 'Payroll period not found' });
+    }
+
+    console.log(`Deleting payroll records for period ${periodId} in tenant ${req.tenantId}`);
+
+    // Delete all payroll records for this period
+    const deleteResult = await prisma.payrollRecord.deleteMany({
+      where: { 
+        periodId: periodId,
+        employee: {
+          tenantId: req.tenantId
+        }
+      },
+    });
+
+    console.log(`Deleted ${deleteResult.count} payroll records for period ${periodId}`);
+
+    return res.status(200).json({ 
+      status: 'success', 
+      message: `Successfully deleted ${deleteResult.count} payroll records`,
+      deletedCount: deleteResult.count
+    });
+
+  } catch (error) {
+    console.error('Delete payroll records error:', error);
+    return res.status(500).json({ 
+      status: 'error', 
+      message: 'Internal server error while deleting payroll records' 
+    });
+  }
+};

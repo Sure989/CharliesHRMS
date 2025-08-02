@@ -7,6 +7,8 @@ import { payrollService } from '@/services/api/payroll.service';
 const PayrollDebugTool: React.FC = () => {
   const [results, setResults] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [fixing, setFixing] = useState(false);
+  const [currentPeriodId, setCurrentPeriodId] = useState<string | null>(null);
 
   const addResult = (title: string, content: any, type: 'success' | 'error' | 'warning' | 'info' = 'info') => {
     setResults(prev => [...prev, { title, content, type }]);
@@ -45,6 +47,7 @@ const PayrollDebugTool: React.FC = () => {
       
       if (periodsData?.data && periodsData.data.length > 0) {
         const currentPeriod = periodsData.data[0];
+        setCurrentPeriodId(currentPeriod.id); // Store period ID for fix function
         addResult('📅 Period Results', {
           periodsFound: periodsData.data.length,
           currentPeriod: {
@@ -100,6 +103,87 @@ const PayrollDebugTool: React.FC = () => {
     }
   };
 
+  const clearAndRegeneratePayroll = async () => {
+    if (!currentPeriodId) {
+      addResult('❌ Error', 'No payroll period found. Please run diagnosis first.', 'error');
+      return;
+    }
+
+    setFixing(true);
+    
+    try {
+      // Step 1: Clear existing payroll records
+      addResult('🗑️ Step 1: Clearing Existing Records', 'Deleting incorrect payroll records...');
+      
+      const deleteResponse = await fetch(`/api/payroll/period/${currentPeriodId}/records`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+
+      if (!deleteResponse.ok) {
+        throw new Error('Failed to delete existing payroll records');
+      }
+
+      const deleteResult = await deleteResponse.json();
+      addResult('🗑️ Delete Results', {
+        message: 'Successfully deleted existing payroll records',
+        deletedCount: deleteResult.deletedCount || 'Unknown'
+      }, 'success');
+
+      // Step 2: Regenerate payroll
+      addResult('⚙️ Step 2: Regenerating Payroll', 'Processing payroll for all employees with salaries...');
+      
+      const processData = await payrollService.bulkProcessPayroll(currentPeriodId);
+      
+      if (processData) {
+        const processed = processData.processed || 0;
+        const errors = 0; // bulkProcessPayroll doesn't return errors directly
+        
+        addResult('⚙️ Regeneration Results', {
+          processed: processed,
+          errors: errors,
+          message: processed > 0 ? `Successfully processed ${processed} employees` : 'No employees were processed',
+          details: [] // Will be shown in the raw results below
+        }, processed === 4 ? 'success' : processed > 0 ? 'warning' : 'error');
+
+        // Show raw results from backend
+        addResult('📋 Raw Backend Results', {
+          results: processData
+        }, 'info');
+
+        // Step 3: Verify the fix
+        if (processed > 0) {
+          addResult('✅ Step 3: Verifying Fix', 'Checking new payroll records...');
+          
+          const verifyData = await payrollService.getPayrollRecords({ periodId: currentPeriodId });
+          const newRecords = verifyData?.data || [];
+          const recordsWithSalary = newRecords.filter((r: any) => r.grossSalary > 0);
+          
+          addResult('✅ Verification Results', {
+            totalRecords: newRecords.length,
+            recordsWithSalary: recordsWithSalary.length,
+            totalPayroll: recordsWithSalary.reduce((sum: number, r: any) => sum + (r.grossSalary || 0), 0),
+            records: recordsWithSalary.map((record: any) => ({
+              employee: `${record.employee?.firstName || 'Unknown'} ${record.employee?.lastName || 'Employee'}`,
+              grossSalary: record.grossSalary,
+              netSalary: record.netSalary
+            }))
+          }, recordsWithSalary.length === 4 ? 'success' : 'warning');
+        }
+      }
+
+    } catch (error: any) {
+      addResult('❌ Fix Failed', {
+        error: error.message || 'Unknown error occurred while fixing payroll'
+      }, 'error');
+    } finally {
+      setFixing(false);
+    }
+  };
+
   const getCardColor = (type: string) => {
     switch (type) {
       case 'success': return 'border-green-500 bg-green-50';
@@ -124,11 +208,21 @@ const PayrollDebugTool: React.FC = () => {
           </div>
           <Button 
             onClick={runDiagnosis} 
-            disabled={loading}
-            className="bg-blue-600 hover:bg-blue-700"
+            disabled={loading || fixing}
+            className="bg-blue-600 hover:bg-blue-700 mr-4"
           >
             {loading ? '🔄 Running Diagnosis...' : '🚀 Start Diagnosis'}
           </Button>
+          
+          {currentPeriodId && (
+            <Button 
+              onClick={clearAndRegeneratePayroll} 
+              disabled={loading || fixing}
+              className="bg-green-600 hover:bg-green-700"
+            >
+              {fixing ? '🔄 Fixing Payroll...' : '🔧 Clear & Regenerate Payroll'}
+            </Button>
+          )}
         </CardContent>
       </Card>
 
@@ -168,6 +262,40 @@ const PayrollDebugTool: React.FC = () => {
                     <p><strong>Periods Found:</strong> {result.content.periodsFound}</p>
                     <p><strong>Current Period:</strong> {result.content.currentPeriod.name}</p>
                     <p><strong>Period ID:</strong> {result.content.currentPeriod.id}</p>
+                  </div>
+                )}
+
+                {result.content.processed !== undefined && (
+                  <div>
+                    <p><strong>Processed:</strong> {result.content.processed}</p>
+                    <p><strong>Errors:</strong> {result.content.errors}</p>
+                    <p><strong>Message:</strong> {result.content.message}</p>
+                  </div>
+                )}
+
+                {result.content.totalRecords !== undefined && (
+                  <div>
+                    <p><strong>Total Records:</strong> {result.content.totalRecords}</p>
+                    <p><strong>Records with Salary:</strong> {result.content.recordsWithSalary}</p>
+                    <p><strong>Total Payroll:</strong> KES {result.content.totalPayroll}</p>
+                    {result.content.records && result.content.records.length > 0 && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2">
+                        {result.content.records.map((record: any, i: number) => (
+                          <div key={i} className="p-2 bg-white rounded border">
+                            <p><strong>{record.employee}</strong></p>
+                            <p>Gross: KES {record.grossSalary}</p>
+                            <p>Net: KES {record.netSalary}</p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {result.content.deletedCount !== undefined && (
+                  <div>
+                    <p><strong>Records Deleted:</strong> {result.content.deletedCount}</p>
+                    <p><strong>Message:</strong> {result.content.message}</p>
                   </div>
                 )}
 

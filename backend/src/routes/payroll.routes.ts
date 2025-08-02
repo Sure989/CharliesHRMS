@@ -30,6 +30,7 @@ import {
   approveTimeEntries,
   downloadPayStub,
   downloadPayrollReport,
+  deletePayrollRecordsByPeriod,
 } from '../controllers/payroll.controller';
 import { authenticate, restrictTo } from '../middleware/auth.middleware';
 
@@ -83,6 +84,13 @@ router.post('/calculate', restrictTo(['ADMIN', 'HR_MANAGER']), calculatePayroll)
  * @access Private (Admin, HR Manager)
  */
 router.post('/periods/:periodId/process-all', restrictTo(['ADMIN', 'HR_MANAGER']), bulkProcessPayroll);
+
+/**
+ * @route DELETE /api/payroll/period/:periodId/records
+ * @desc Delete all payroll records for a specific period
+ * @access Private (Admin, HR Manager)
+ */
+router.delete('/period/:periodId/records', restrictTo(['ADMIN', 'HR_MANAGER']), deletePayrollRecordsByPeriod);
 
 /**
  * @route GET /api/payroll/records
