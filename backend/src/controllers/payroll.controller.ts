@@ -595,6 +595,13 @@ export const bulkProcessPayroll = async (req: Request, res: Response) => {
       },
     });
 
+    console.log(`[BULK PAYROLL] Found ${employees.length} active employees`);
+    console.log(`[BULK PAYROLL] Employees with salaries:`, employees.filter(emp => emp.salary && emp.salary > 0).map(emp => ({
+      id: emp.id,
+      name: `${emp.firstName} ${emp.lastName}`,
+      salary: emp.salary
+    })));
+
     const results = {
       processed: 0,
       skipped: 0,
@@ -605,6 +612,8 @@ export const bulkProcessPayroll = async (req: Request, res: Response) => {
     // Process each employee
     for (const employee of employees) {
       try {
+        console.log(`[BULK PAYROLL] Processing employee: ${employee.firstName} ${employee.lastName} (ID: ${employee.id}, Salary: ${employee.salary})`);
+        
         // Check if payroll already exists
         const existingPayroll = await prisma.payroll.findFirst({
           where: {
@@ -615,6 +624,7 @@ export const bulkProcessPayroll = async (req: Request, res: Response) => {
         });
 
         if (existingPayroll) {
+          console.log(`[BULK PAYROLL] Skipping employee ${employee.firstName} ${employee.lastName} - payroll already exists`);
           results.skipped++;
           results.details.push({
             employeeId: employee.id,
@@ -630,6 +640,7 @@ export const bulkProcessPayroll = async (req: Request, res: Response) => {
         const basicSalary = employee.salary || 0;
 
         if (basicSalary <= 0) {
+          console.log(`[BULK PAYROLL] Error for employee ${employee.firstName} ${employee.lastName} - no salary configured`);
           results.errors++;
           results.details.push({
             employeeId: employee.id,
@@ -700,8 +711,10 @@ export const bulkProcessPayroll = async (req: Request, res: Response) => {
           status: 'processed',
           netSalary: calculation.netSalary,
         });
+        
+        console.log(`[BULK PAYROLL] Successfully processed employee ${employee.firstName} ${employee.lastName} - Net Salary: ${calculation.netSalary}`);
       } catch (error) {
-        console.error(`Error processing payroll for employee ${employee.id}:`, error);
+        console.error(`[BULK PAYROLL] Error processing payroll for employee ${employee.id}:`, error);
         results.errors++;
         results.details.push({
           employeeId: employee.id,
@@ -712,6 +725,8 @@ export const bulkProcessPayroll = async (req: Request, res: Response) => {
         });
       }
     }
+
+    console.log(`[BULK PAYROLL] Processing complete. Processed: ${results.processed}, Skipped: ${results.skipped}, Errors: ${results.errors}`);
 
     return res.status(200).json({
       status: 'success',
