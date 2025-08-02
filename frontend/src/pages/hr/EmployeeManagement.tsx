@@ -219,10 +219,14 @@ const EmployeeManagement = () => {
     if (!employeeData.firstName.trim()) errors.firstName = 'First name is required';
     if (!employeeData.lastName.trim()) errors.lastName = 'Last name is required';
     if (!employeeData.email.trim()) errors.email = 'Email is required';
-    if (!employeeData.branchId) errors.branchId = 'Branch is required';
-    if (!employeeData.departmentId) errors.departmentId = 'Department is required';
     if (!employeeData.position.trim()) errors.position = 'Position is required';
     if (!employeeData.hireDate || !employeeData.hireDate.trim()) errors.hireDate = 'Hire date is required';
+    
+    // Branch is only required for new employees (not when editing existing ones)
+    if (!excludeEmployeeId) {
+      if (!employeeData.branchId) errors.branchId = 'Branch is required';
+      if (!employeeData.departmentId) errors.departmentId = 'Department is required';
+    }
     
     // Email validation
     if (employeeData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(employeeData.email)) {
@@ -237,6 +241,11 @@ const EmployeeManagement = () => {
     // Check for duplicate email (exclude current employee when editing)
     if (employeeData.email && employees.some(emp => emp.email === employeeData.email && emp.id !== excludeEmployeeId)) {
       errors.email = 'Email already exists';
+    }
+
+    // For new employees, branch is required. For existing employees, allow updates without branch
+    if (!excludeEmployeeId && !employeeData.branchId) {
+      errors.branchId = 'Branch is required';
     }
     
     return errors;
@@ -349,10 +358,16 @@ const EmployeeManagement = () => {
         email: newEmployee.email,
         phone: newEmployee.phone,
         position: newEmployee.position,
-        departmentId: newEmployee.departmentId, // send as ID
-        branchId: newEmployee.branchId, // send as ID
         hireDate: normalizeToISO(newEmployee.hireDate),
       };
+
+      // Only include branch and department if they have values
+      if (newEmployee.branchId) {
+        updateRequest.branchId = newEmployee.branchId;
+      }
+      if (newEmployee.departmentId) {
+        updateRequest.departmentId = newEmployee.departmentId;
+      }
 
       await employeeService.updateEmployee(selectedEmployee.id, updateRequest);
 
