@@ -2200,9 +2200,9 @@ export const deletePayrollRecordsByPeriod = async (req: Request, res: Response) 
     console.log(`Deleting payroll records for period ${periodId} in tenant ${req.tenantId}`);
 
     // Delete all payroll records for this period
-    const deleteResult = await prisma.payrollRecord.deleteMany({
+    const deleteResult = await prisma.payroll.deleteMany({
       where: { 
-        periodId: periodId,
+        payrollPeriodId: periodId,
         employee: {
           tenantId: req.tenantId
         }
@@ -2214,7 +2214,7 @@ export const deletePayrollRecordsByPeriod = async (req: Request, res: Response) 
     return res.status(200).json({ 
       status: 'success', 
       message: `Successfully deleted ${deleteResult.count} payroll records`,
-      deletedCount: deleteResult.count
+      data: { deleted: deleteResult.count }
     });
 
   } catch (error) {
