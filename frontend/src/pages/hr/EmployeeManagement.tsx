@@ -222,7 +222,7 @@ const EmployeeManagement = () => {
     if (!employeeData.branchId) errors.branchId = 'Branch is required';
     if (!employeeData.departmentId) errors.departmentId = 'Department is required';
     if (!employeeData.position.trim()) errors.position = 'Position is required';
-    if (!employeeData.hireDate) errors.hireDate = 'Hire date is required';
+    if (!employeeData.hireDate || !employeeData.hireDate.trim()) errors.hireDate = 'Hire date is required';
     
     // Email validation
     if (employeeData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(employeeData.email)) {
@@ -306,7 +306,7 @@ const EmployeeManagement = () => {
       branchId: employee.branchId || '',
       departmentId: employee.departmentId || '',
       position: employee.position || '',
-      hireDate: employee.hireDate || '',
+      hireDate: normalizeDateForInput(employee.hireDate) || '',
       phone: employee.phone || ''
     });
     setIsEditDialogOpen(true);
@@ -315,10 +315,18 @@ const EmployeeManagement = () => {
   const handleUpdateEmployee = async () => {
     if (!selectedEmployee) return;
 
+    console.log('Debug - newEmployee data:', newEmployee);
+    console.log('Debug - hireDate original:', selectedEmployee.hireDate);
+    console.log('Debug - hireDate normalized:', normalizeDateForInput(selectedEmployee.hireDate));
+    console.log('Debug - hireDate for API:', normalizeToISO(newEmployee.hireDate));
+
     const errors = validateForm(newEmployee, selectedEmployee.id);
     setFormErrors(errors);
     
-    if (Object.keys(errors).length > 0) return;
+    if (Object.keys(errors).length > 0) {
+      console.log('Debug - validation errors:', errors);
+      return;
+    }
 
     try {
       const updateRequest: any = {
