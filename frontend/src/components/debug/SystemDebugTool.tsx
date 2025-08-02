@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { employeeService } from '@/services/api/employee.service';
 import { payrollService } from '@/services/api/payroll.service';
 import { authService } from '@/services/api/auth.service';
+import { apiClient } from '@/services/apiClient';
 
 interface DebugResult {
   title: string;
@@ -54,14 +55,17 @@ const SystemDebugTool: React.FC = () => {
       // Check API connectivity
       addResult('🌐 API Connectivity', 'Testing backend connection...', 'info', 'overview');
       try {
-        const healthCheck = await fetch('/api/health');
-        const healthData = await healthCheck.json();
+        const healthResponse = await apiClient.get('/health');
         addResult('🌐 API Health', {
-          status: healthCheck.ok ? 'Connected' : 'Failed',
-          response: healthData
-        }, healthCheck.ok ? 'success' : 'error', 'overview');
+          status: healthResponse ? 'Connected' : 'Failed',
+          response: healthResponse
+        }, healthResponse ? 'success' : 'error', 'overview');
       } catch (error) {
-        addResult('🌐 API Health', { error: 'Backend unreachable' }, 'error', 'overview');
+        console.error('API Health check failed:', error);
+        addResult('🌐 API Health', { 
+          error: 'Backend unreachable',
+          details: error instanceof Error ? error.message : 'Unknown error'
+        }, 'error', 'overview');
       }
 
       // Check authentication
