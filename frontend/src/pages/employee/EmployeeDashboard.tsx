@@ -7,6 +7,7 @@ import { leaveService } from '@/services/api/leave.service';
 import { trainingService } from '@/services/api/training.service';
 import { performanceService } from '@/services/api/performance.service';
 import { activityService } from '@/services/api/activity.service';
+import { getCurrentISOString } from '@/utils/dateUtils';
 
 const EmployeeDashboard = () => {
   const { user } = useAuth();
@@ -25,7 +26,9 @@ const EmployeeDashboard = () => {
         // Leave balance
         try {
           const leaveRes = await leaveService.getLeaveBalances(user.employeeId);
-          const totalBalance = leaveRes?.reduce((sum, balance) => sum + (balance.available || 0), 0) || 0;
+          const totalBalance = Array.isArray(leaveRes) 
+            ? leaveRes.reduce((sum, balance) => sum + ((balance as any)?.available || (balance as any)?.balance || 0), 0) 
+            : 0;
           setLeaveBalance(totalBalance);
         } catch (error) {
           setLeaveBalance(0);
@@ -51,7 +54,7 @@ const EmployeeDashboard = () => {
         // Performance score from performance reviews
         try {
           const perfRes = await performanceService.getPerformanceScore(user.employeeId);
-          setPerformanceScore(perfRes?.data?.score || 0);
+          setPerformanceScore((perfRes as any)?.data?.score || (perfRes as any)?.score || 0);
         } catch (error) {
           setPerformanceScore(0);
         }
