@@ -210,18 +210,26 @@ export const createEmployee = async (req: Request, res: Response) => {
       });
     }
 
-    // Generate next sequential employeeNumber using configured service
+    // Generate next sequential employeeNumber in EMP001 format
     const lastEmployee = await prisma.employee.findFirst({
+      where: { 
+        tenantId: req.tenantId,
+        employeeNumber: { startsWith: 'EMP' }
+      },
       orderBy: { employeeNumber: 'desc' },
       select: { employeeNumber: true }
     });
-    let nextNumber = 0;
+    
+    let nextNumber = 1;
     if (lastEmployee && lastEmployee.employeeNumber) {
-      const prefix = employeeService.getDefaultDepartmentName().substring(0, 3).toUpperCase();
-      const lastNum = parseInt(lastEmployee.employeeNumber.replace(prefix, ''), 10);
-      nextNumber = lastNum;
+      // Extract number from EMP001 format
+      const match = lastEmployee.employeeNumber.match(/EMP(\d+)/);
+      if (match) {
+        nextNumber = parseInt(match[1], 10) + 1;
+      }
     }
-    const nextEmployeeNumber = employeeService.generateEmployeeNumber(nextNumber);
+    
+    const nextEmployeeNumber = `EMP${String(nextNumber).padStart(3, '0')}`;
 
     // Generate a temporary password for the new user
     const tempPassword = Math.random().toString(36).substring(2, 15) + 
@@ -856,6 +864,76 @@ export const exportEmployees = async (req: Request, res: Response) => {
     return res.status(500).json({
       status: 'error',
       message: 'Internal server error while exporting employees',
+    });
+  }
+};
+
+/**
+ * Renumber all employees sequentially from EMP001
+ * @route POST /api/employees/renumber-all
+ */
+export const renumberAllEmployees = async (req: Request, res: Response) => {
+  try {
+    if (!req.tenantId) {
+      return res.status(401).json({
+        status: 'error',
+        message: 'Tenant ID is required',
+      });
+    }
+
+    // Get all employees ordered by creation date (first hired gets EMP001)
+    const employees = await prisma.employee.findMany({
+      where: { tenantId: req.tenantId },
+      orderBy: { createdAt: 'asc' },
+      select: { id: true, firstName: true, lastName: true, employeeNumber: true, createdAt: true }
+    });
+
+    console.log(`[RENUMBER] Starting renumbering process for ${employees.length} employees in tenant ${req.tenantId}`);
+
+    // Prepare the updates
+    const updates = employees.map((employee, index) => {
+      const newNumber = `EMP${String(index + 1).padStart(3, '0')}`;
+      return {
+        id: employee.id,
+        oldNumber: employee.employeeNumber,
+        newNumber: newNumber,
+        name: `${employee.firstName} ${employee.lastName}`
+      };
+    });
+
+    // Execute all updates in a transaction
+    await prisma.$transaction(
+      updates.map(update => 
+        prisma.employee.update({
+          where: { id: update.id },
+          data: { employeeNumber: update.newNumber }
+        })
+      )
+    );
+
+    console.log(`[RENUMBER] Successfully renumbered ${updates.length} employees`);
+
+    // Log the action for audit purposes
+    console.log(`[AUDIT] Employee renumbering completed by user in tenant ${req.tenantId} at ${new Date().toISOString()}`);
+
+    return res.status(200).json({
+      status: 'success',
+      message: `Successfully renumbered ${updates.length} employees from EMP001 to EMP${String(updates.length).padStart(3, '0')}`,
+      data: {
+        totalEmployees: updates.length,
+        updates: updates.map(u => ({
+          name: u.name,
+          oldNumber: u.oldNumber,
+          newNumber: u.newNumber
+        }))
+      }
+    });
+
+  } catch (error) {
+    console.error('Renumber employees error:', error);
+    return res.status(500).json({
+      status: 'error',
+      message: 'Internal server error while renumbering employees',
     });
   }
 };

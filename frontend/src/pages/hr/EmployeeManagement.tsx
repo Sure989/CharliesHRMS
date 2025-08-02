@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useState, useEffect, useMemo } from 'react';
-import { Plus, Search, Edit, Trash2, UserCheck, UserX, Shield, Info, AlertTriangle, Upload, Download, FileSpreadsheet } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, UserCheck, UserX, Shield, Info, AlertTriangle, Upload, Download, FileSpreadsheet, Hash } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { User, Branch, Department } from '@/types/types';
@@ -39,6 +39,11 @@ const EmployeeManagement = () => {
     success: number;
     failed: number;
     errors: Array<{ row: number; error: string }>;
+  } | null>(null);
+  const [isRenumbering, setIsRenumbering] = useState(false);
+  const [renumberResults, setRenumberResults] = useState<{
+    totalEmployees: number;
+    updates: Array<{ name: string; oldNumber: string | null; newNumber: string }>;
   } | null>(null);
 
   // Helper to get department/branch name by id
@@ -209,6 +214,46 @@ const EmployeeManagement = () => {
       title: "Template Downloaded",
       description: "Employee import template has been downloaded."
     });
+  };
+
+  // Renumber functionality
+  const handleRenumberEmployees = async () => {
+    if (!window.confirm(
+      'Are you sure you want to renumber ALL employees?\n\n' +
+      'This will assign new employee numbers starting from EMP001 to all employees ' +
+      'based on their hire date (earliest hired gets EMP001).\n\n' +
+      'This action cannot be undone.'
+    )) {
+      return;
+    }
+
+    setIsRenumbering(true);
+    setRenumberResults(null);
+
+    try {
+      const result = await employeeService.renumberAllEmployees();
+      setRenumberResults(result);
+      
+      toast({
+        title: "Success",
+        description: `Successfully renumbered ${result.totalEmployees} employees from EMP001 to EMP${String(result.totalEmployees).padStart(3, '0')}`,
+      });
+
+      // Refresh employee list to show new numbers
+      const employeesResponse = await employeeService.getEmployees();
+      const employeesData = Array.isArray(employeesResponse.data) ? employeesResponse.data : [];
+      setEmployees((employeesData as any[]).map(emp => ({ role: 'employee', ...emp })));
+
+    } catch (error: any) {
+      console.error('Renumber employees error:', error);
+      toast({
+        title: "Error",
+        description: error.message || 'Failed to renumber employees',
+        variant: "destructive"
+      });
+    } finally {
+      setIsRenumbering(false);
+    }
   };
 
   // Form validation
@@ -572,6 +617,23 @@ const EmployeeManagement = () => {
                 </div>
               </DialogContent>
             </Dialog>
+            <Button 
+              onClick={handleRenumberEmployees}
+              disabled={isRenumbering || employees.length === 0}
+              className="bg-orange-600 hover:bg-orange-700 text-white flex items-center space-x-2"
+            >
+              {isRenumbering ? (
+                <>
+                  <Hash className="h-4 w-4 text-white animate-spin" />
+                  <span>Renumbering...</span>
+                </>
+              ) : (
+                <>
+                  <Hash className="h-4 w-4 text-white" />
+                  <span>Renumber All</span>
+                </>
+              )}
+            </Button>
             <Button 
               onClick={() => setIsAddDialogOpen(true)}
               className="bg-green-600 hover:bg-green-700 text-white flex items-center space-x-2"

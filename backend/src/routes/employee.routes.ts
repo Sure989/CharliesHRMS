@@ -11,6 +11,7 @@ import {
   importEmployees,
   exportEmployees,
   getEmployeeByEmployeeNumber,
+  renumberAllEmployees,
 } from '../controllers/employee.controller';
 import { getEmployeeActivity, getTrainingProgress } from '../controllers/employeeExtras.controller';
 import { authenticate, restrictTo } from '../middleware/auth.middleware';
@@ -168,4 +169,12 @@ router.get('/:id/activity', getEmployeeActivity);
  * @access Private (All authenticated users)
  */
 router.get('/training/progress/:employeeId', getTrainingProgress);
+
+/**
+ * @route POST /api/employees/renumber-all
+ * @desc Renumber all employees sequentially from EMP001
+ * @access Private (Admin only)
+ */
+router.post('/renumber-all', restrictTo(['ADMIN']), renumberAllEmployees);
+
 export default router;

@@ -528,6 +528,24 @@ class EmployeeService {
       throw error;
     }
   }
+
+  /**
+   * Renumber all employees sequentially from EMP001
+   */
+  async renumberAllEmployees(): Promise<{ totalEmployees: number; updates: Array<{ name: string; oldNumber: string | null; newNumber: string }> }> {
+    try {
+      const response = await apiClient.post<{ totalEmployees: number; updates: Array<{ name: string; oldNumber: string | null; newNumber: string }> }>('/employees/renumber-all');
+      
+      if (response.status === 'success' && response.data) {
+        return response.data;
+      }
+      
+      throw new Error(response.message || 'Failed to renumber employees');
+    } catch (error) {
+      console.error('Renumber employees error:', error);
+      throw error;
+    }
+  }
 }
 
 // Export singleton instance
