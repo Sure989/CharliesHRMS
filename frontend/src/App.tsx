@@ -46,7 +46,6 @@ import EmployeePayroll from "@/pages/employee/EmployeePayroll";
 import NotFound from "@/pages/NotFound";
 import OpsManagerLeaveRequestPage from "@/pages/operations/OpsManagerLeaveRequestPage";
 import OpsManagerSalaryAdvancePage from "@/pages/operations/OpsManagerSalaryAdvancePage";
-import PayrollDebugTool from "@/components/debug/PayrollDebugTool";
 
 const queryClient = new QueryClient();
 
@@ -242,7 +241,6 @@ const App = () => {
                     <Route path="reports" element={<PayrollReports />} />
                     <Route path="time-attendance" element={<TimeAttendance />} />
                     <Route path="settings" element={<PayrollSettings />} />
-                    <Route path="debug" element={<PayrollDebugTool />} />
                   </Routes>
                 </ProtectedRoute>
               } />
