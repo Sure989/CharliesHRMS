@@ -937,3 +937,67 @@ export const renumberAllEmployees = async (req: Request, res: Response) => {
     });
   }
 };
+
+/**
+ * Preview what employee renumbering would look like (without making changes)
+ * @route GET /api/employees/renumber-preview
+ */
+export const previewRenumberEmployees = async (req: Request, res: Response) => {
+  try {
+    if (!req.tenantId) {
+      return res.status(401).json({
+        status: 'error',
+        message: 'Tenant ID is required',
+      });
+    }
+
+    // Get all employees ordered by creation date
+    const employees = await prisma.employee.findMany({
+      where: { tenantId: req.tenantId },
+      orderBy: { createdAt: 'asc' },
+      select: { 
+        id: true, 
+        firstName: true, 
+        lastName: true, 
+        employeeNumber: true, 
+        createdAt: true,
+        position: true,
+        department: { select: { name: true } }
+      }
+    });
+
+    // Generate preview of changes
+    const preview = employees.map((employee, index) => {
+      const newNumber = `EMP${String(index + 1).padStart(3, '0')}`;
+      return {
+        name: `${employee.firstName} ${employee.lastName}`,
+        position: employee.position,
+        department: employee.department?.name || 'Unknown',
+        currentNumber: employee.employeeNumber,
+        proposedNumber: newNumber,
+        willChange: employee.employeeNumber !== newNumber,
+        hireDate: employee.createdAt.toISOString().split('T')[0]
+      };
+    });
+
+    const changesCount = preview.filter(p => p.willChange).length;
+
+    return res.status(200).json({
+      status: 'success',
+      message: `Preview generated: ${changesCount} employees would be affected`,
+      data: {
+        totalEmployees: preview.length,
+        employeesAffected: changesCount,
+        employeesUnchanged: preview.length - changesCount,
+        preview: preview
+      }
+    });
+
+  } catch (error) {
+    console.error('Preview renumber employees error:', error);
+    return res.status(500).json({
+      status: 'error',
+      message: 'Internal server error while generating preview',
+    });
+  }
+};

@@ -12,6 +12,7 @@ import {
   exportEmployees,
   getEmployeeByEmployeeNumber,
   renumberAllEmployees,
+  previewRenumberEmployees,
 } from '../controllers/employee.controller';
 import { getEmployeeActivity, getTrainingProgress } from '../controllers/employeeExtras.controller';
 import { authenticate, restrictTo } from '../middleware/auth.middleware';
@@ -169,6 +170,13 @@ router.get('/:id/activity', getEmployeeActivity);
  * @access Private (All authenticated users)
  */
 router.get('/training/progress/:employeeId', getTrainingProgress);
+
+/**
+ * @route GET /api/employees/renumber-preview
+ * @desc Preview what renumbering all employees would look like
+ * @access Private (Admin only)
+ */
+router.get('/renumber-preview', restrictTo(['ADMIN']), previewRenumberEmployees);
 
 /**
  * @route POST /api/employees/renumber-all

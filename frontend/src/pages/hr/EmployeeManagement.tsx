@@ -45,6 +45,21 @@ const EmployeeManagement = () => {
     totalEmployees: number;
     updates: Array<{ name: string; oldNumber: string | null; newNumber: string }>;
   } | null>(null);
+  const [showPreview, setShowPreview] = useState(false);
+  const [previewData, setPreviewData] = useState<{
+    totalEmployees: number;
+    employeesAffected: number;
+    employeesUnchanged: number;
+    preview: Array<{
+      name: string;
+      position: string;
+      department: string;
+      currentNumber: string;
+      proposedNumber: string;
+      willChange: boolean;
+      hireDate: string;
+    }>;
+  } | null>(null);
 
   // Helper to get department/branch name by id
   const getDepartmentName = (id: string) => departments.find(d => d.id === id)?.name || '';
@@ -218,12 +233,50 @@ const EmployeeManagement = () => {
 
   // Renumber functionality
   const handleRenumberEmployees = async () => {
+    // First, let's analyze the impact
+    const impactAnalysis = `
+    ⚠️  IMPACT ANALYSIS - This will affect:
+    
+    🔹 All ${employees.length} employee records
+    🔹 Any printed documents (pay slips, ID cards, contracts)
+    🔹 External system integrations
+    🔹 Historical reports and audit trails
+    🔹 File systems organized by employee number
+    
+    📋 RECOMMENDED ACTIONS BEFORE PROCEEDING:
+    
+    1. Export current employee list for backup
+    2. Notify payroll team and external systems
+    3. Update any printed materials after renumbering
+    4. Consider doing this during maintenance window
+    
+    ❓ This is typically done ONLY during initial setup or major system migration.
+    
+    Are you absolutely sure you want to proceed?`;
+
+    if (!window.confirm(impactAnalysis)) {
+      return;
+    }
+
+    // Second confirmation for extra safety
     if (!window.confirm(
-      'Are you sure you want to renumber ALL employees?\n\n' +
-      'This will assign new employee numbers starting from EMP001 to all employees ' +
-      'based on their hire date (earliest hired gets EMP001).\n\n' +
-      'This action cannot be undone.'
+      '🚨 FINAL CONFIRMATION:\n\n' +
+      'This will permanently change ALL employee numbers from EMP001 onwards.\n' +
+      'Type "RENUMBER" in the next dialog to confirm you understand the impact.'
     )) {
+      return;
+    }
+
+    // Third confirmation requiring typed input
+    const confirmationText = window.prompt(
+      'Type "RENUMBER" (in capital letters) to confirm this action:'
+    );
+
+    if (confirmationText !== 'RENUMBER') {
+      toast({
+        title: "Action Cancelled",
+        description: "Renumbering cancelled. Employee numbers remain unchanged.",
+      });
       return;
     }
 
