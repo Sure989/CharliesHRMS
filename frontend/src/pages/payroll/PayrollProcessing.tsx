@@ -600,66 +600,72 @@ const PayrollProcessing = () => {
                           )}</TableCell>
                           <TableCell>
                             <Badge>{record.status}</Badge>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="ml-2"
-                              disabled={loading || !currentPeriod}
-                              onClick={async () => {
-                                if (!window.confirm('Are you sure you want to delete and reprocess payroll for this employee and period?')) return;
-                                try {
-                                  setLoading(true);
-                                  await payrollService.deletePayrollRecord(record.employeeId, record.payrollPeriodId);
-                                  toast({ title: 'Payroll record deleted', description: 'You can now reprocess payroll for this employee.', variant: 'default' });
-                                  // Refresh payroll records
-                                  if (currentPeriod) {
-                                    const recordsRes = await payrollService.getPayrollRecords({ periodId: currentPeriod.id });
-                                    const records = recordsRes.data || [];
-                                    if (Array.isArray(records)) {
-                                      setPayrollRecords(records);
-                                    } else {
-                                      setPayrollRecords([]);
+                            {/* Show appropriate button based on whether payroll data exists */}
+                            {(record.grossSalary && record.grossSalary > 0) || (record.grossPay && record.grossPay > 0) ? (
+                              // Employee has payroll data - show Reprocess button
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="ml-2"
+                                disabled={loading || !currentPeriod}
+                                onClick={async () => {
+                                  if (!window.confirm('Are you sure you want to delete and reprocess payroll for this employee and period?')) return;
+                                  try {
+                                    setLoading(true);
+                                    await payrollService.deletePayrollRecord(record.employeeId, record.payrollPeriodId);
+                                    toast({ title: 'Payroll record deleted', description: 'You can now reprocess payroll for this employee.', variant: 'default' });
+                                    // Refresh payroll records
+                                    if (currentPeriod) {
+                                      const recordsRes = await payrollService.getPayrollRecords({ periodId: currentPeriod.id });
+                                      const records = recordsRes.data || [];
+                                      if (Array.isArray(records)) {
+                                        setPayrollRecords(records);
+                                      } else {
+                                        setPayrollRecords([]);
+                                      }
                                     }
+                                  } catch (err: any) {
+                                    toast({ title: 'Failed to delete payroll record', description: err.message || String(err), variant: 'destructive' });
+                                  } finally {
+                                    setLoading(false);
                                   }
-                                } catch (err: any) {
-                                  toast({ title: 'Failed to delete payroll record', description: err.message || String(err), variant: 'destructive' });
-                                } finally {
-                                  setLoading(false);
-                                }
-                              }}
-                            >
-                              Reprocess Payroll
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="default"
-                              className="ml-2"
-                              disabled={loading || !currentPeriod}
-                              onClick={async () => {
-                                if (!window.confirm('Process payroll for this employee?')) return;
-                                try {
-                                  setLoading(true);
-                                  await payrollService.processPayrollForEmployee(currentPeriod.id, record.employeeId);
-                                  toast({ title: 'Payroll processed', description: `Payroll processed for ${record.employeeName || 'employee'}` });
-                                  // Refresh payroll records
-                                  if (currentPeriod) {
-                                    const recordsRes = await payrollService.getPayrollRecords({ periodId: currentPeriod.id });
-                                    const records = recordsRes.data || [];
-                                    if (Array.isArray(records)) {
-                                      setPayrollRecords(records);
-                                    } else {
-                                      setPayrollRecords([]);
+                                }}
+                              >
+                                Reprocess Payroll
+                              </Button>
+                            ) : (
+                              // Employee has no payroll data - show Process button
+                              <Button
+                                size="sm"
+                                variant="default"
+                                className="ml-2"
+                                disabled={loading || !currentPeriod}
+                                onClick={async () => {
+                                  if (!window.confirm('Process payroll for this employee?')) return;
+                                  try {
+                                    setLoading(true);
+                                    await payrollService.processPayrollForEmployee(currentPeriod.id, record.employeeId);
+                                    toast({ title: 'Payroll processed', description: `Payroll processed for ${record.employeeName || 'employee'}` });
+                                    // Refresh payroll records
+                                    if (currentPeriod) {
+                                      const recordsRes = await payrollService.getPayrollRecords({ periodId: currentPeriod.id });
+                                      const records = recordsRes.data || [];
+                                      if (Array.isArray(records)) {
+                                        setPayrollRecords(records);
+                                      } else {
+                                        setPayrollRecords([]);
+                                      }
                                     }
+                                  } catch (err: any) {
+                                    toast({ title: 'Failed to process payroll', description: err.message || String(err), variant: 'destructive' });
+                                  } finally {
+                                    setLoading(false);
                                   }
-                                } catch (err: any) {
-                                  toast({ title: 'Failed to process payroll', description: err.message || String(err), variant: 'destructive' });
-                                } finally {
-                                  setLoading(false);
-                                }
-                              }}
-                            >
-                              Process Payroll
-                            </Button>
+                                }}
+                              >
+                                Process Payroll
+                              </Button>
+                            )}
                           </TableCell>
                         </TableRow>
                       ))}

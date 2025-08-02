@@ -699,7 +699,7 @@ class PayrollService {
    */
   async deletePayrollRecordsByPeriod(periodId: string): Promise<{ deleted: number }> {
     try {
-      const response = await apiClient.delete<{ deleted: number }>(`/payroll/periods/${periodId}/records`);
+      const response = await apiClient.delete<{ deleted: number }>(`/payroll/period/${periodId}/records`);
       
       if (response.status === 'success' && response.data) {
         return response.data;
