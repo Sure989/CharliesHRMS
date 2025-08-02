@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { integrationApi } from '@/services/api/integrationApi';
 import { useToast } from '@/hooks/use-toast';
+import { formatFilenameWithDate } from '@/utils/dateUtils';
 
 interface Integration {
   id: string;
@@ -183,7 +184,7 @@ export const useIntegrations = (): UseIntegrationsReturn => {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `integration-logs-${new Date().toISOString().split('T')[0]}.csv`;
+      a.download = formatFilenameWithDate('integration-logs', 'csv');
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);

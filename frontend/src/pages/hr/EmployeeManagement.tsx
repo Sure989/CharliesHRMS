@@ -18,6 +18,7 @@ import { employeeService, Employee } from '@/services/api/employee.service';
 import { branchService } from '@/services/api/branch.service';
 import { departmentService } from '@/services/api/department.service';
 import { extractDataFromResponse } from '@/utils/api-helpers';
+import { normalizeDateForInput, normalizeToISO, formatDateSafe } from '@/utils/dateUtils';
 
 const EmployeeManagement = () => {
   const { toast } = useToast();
@@ -258,7 +259,7 @@ const EmployeeManagement = () => {
         position: newEmployee.position,
         department: newEmployee.departmentId,
         branch: newEmployee.branchId,
-        hireDate: newEmployee.hireDate,
+        hireDate: normalizeToISO(newEmployee.hireDate),
       };
 
       await employeeService.createEmployee(employeeRequest);
@@ -328,7 +329,7 @@ const EmployeeManagement = () => {
         position: newEmployee.position,
         departmentId: newEmployee.departmentId, // send as ID
         branchId: newEmployee.branchId, // send as ID
-        hireDate: newEmployee.hireDate,
+        hireDate: normalizeToISO(newEmployee.hireDate),
       };
 
       await employeeService.updateEmployee(selectedEmployee.id, updateRequest);
@@ -760,7 +761,7 @@ const EmployeeManagement = () => {
                   <Input
                     id="hireDate"
                     type="date"
-                    value={newEmployee.hireDate ? newEmployee.hireDate.split('T')[0] : ''}
+                    value={normalizeDateForInput(newEmployee.hireDate)}
                     onChange={(e) => setNewEmployee({ ...newEmployee, hireDate: e.target.value })}
                     className={formErrors.hireDate ? 'border-red-500' : ''}
                   />
@@ -909,7 +910,7 @@ const EmployeeManagement = () => {
                   <Input
                     id="edit-hireDate"
                     type="date"
-                    value={newEmployee.hireDate}
+                    value={normalizeDateForInput(newEmployee.hireDate)}
                     onChange={(e) => setNewEmployee({ ...newEmployee, hireDate: e.target.value })}
                     className={formErrors.hireDate ? 'border-red-500' : ''}
                   />

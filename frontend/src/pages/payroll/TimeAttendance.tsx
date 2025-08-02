@@ -27,6 +27,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { payrollService } from '@/services/api/payroll.service';
 import type { TimeEntry, KenyanPayrollEmployee as PayrollEmployee } from '@/types/payroll';
+import { getCurrentDateString, getCurrentISOString } from '@/utils/dateUtils';
 
 const TimeAttendance = () => {
   const { toast } = useToast();
@@ -187,7 +188,7 @@ const TimeAttendance = () => {
           ...entry, 
           approved: true,
           approvedBy: 'Current User',
-          approvedDate: new Date().toISOString()
+          approvedDate: getCurrentISOString()
         } : entry
       ));
       
@@ -296,7 +297,7 @@ const TimeAttendance = () => {
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `time-attendance-report-${new Date().toISOString().split('T')[0]}.csv`;
+      link.download = `time-attendance-report-${getCurrentDateString()}.csv`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);

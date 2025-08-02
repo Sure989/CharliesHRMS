@@ -11,6 +11,7 @@ import { usePolling } from '@/hooks/usePolling';
 import { useAuth } from '@/contexts/AuthContext';
 import { config } from '@/config/environment';
 import { apiClient } from '@/services/apiClient';
+import { getCurrentISOString, formatDateSafe } from '@/utils/dateUtils';
 
 // --- Inferred Types ---
 interface Employee {
@@ -501,7 +502,7 @@ const RealTimeDashboard: React.FC<RealTimeDashboardProps> = ({ role }) => {
                       </p>
                     </div>
                     <div className="text-xs text-muted-foreground">
-                      {hire.hireDate ? new Date(hire.hireDate).toLocaleDateString() : ''}
+                      {formatDateSafe(hire.hireDate)}
                     </div>
                   </div>
                 ))}
@@ -530,7 +531,7 @@ const RealTimeDashboard: React.FC<RealTimeDashboardProps> = ({ role }) => {
                       </p>
                     </div>
                     <div className="text-xs text-muted-foreground">
-                      {leaveItem.startDate ? new Date(leaveItem.startDate).toLocaleDateString() : ''}
+                      {formatDateSafe(leaveItem.startDate)}
                     </div>
                   </div>
                 ))}

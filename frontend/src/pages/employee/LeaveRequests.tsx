@@ -13,6 +13,7 @@ import { useForm } from 'react-hook-form';
 import { Calendar, Plus, CheckCircle, XCircle, Clock, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { calculateDaysBetween, getCurrentISOString, formatDateSafe } from '@/utils/dateUtils';
 import { leaveService } from '@/services/api/leave.service';
 import type { LeaveRequest } from '@/types/types';
 
@@ -104,12 +105,12 @@ const LeaveRequests = () => {
         days: req.days
           ?? req.totalDays
           ?? (req.startDate && req.endDate
-              ? (Math.ceil((new Date(req.endDate).getTime() - new Date(req.startDate).getTime()) / (1000 * 3600 * 24)) + 1)
+              ? calculateDaysBetween(req.startDate, req.endDate)
               : 1),
         submissionDate: req.submissionDate
           ?? req.appliedAt
           ?? req.createdAt
-          ?? new Date().toISOString(),
+          ?? getCurrentISOString(),
         leaveType: typeof req.leaveType === 'object' && req.leaveType && 'name' in req.leaveType
           ? req.leaveType.name
           : (typeof req.leaveType === 'string' ? req.leaveType : 'Unknown'),
@@ -218,7 +219,7 @@ const LeaveRequests = () => {
             ? (Math.ceil((new Date(req.endDate).getTime() - new Date(req.startDate).getTime()) / (1000 * 3600 * 24)) + 1)
             : 1
         ),
-        submissionDate: req.submissionDate ?? req.createdAt ?? req.appliedAt ?? new Date().toISOString(),
+        submissionDate: req.submissionDate ?? req.createdAt ?? req.appliedAt ?? getCurrentISOString(),
       }));
       setRequests(mappedRequests);
       setIsDialogOpen(false);
@@ -436,7 +437,7 @@ const LeaveRequests = () => {
                   <TableRow key={request.id}>
                     <TableCell className="font-medium">{request.leaveType ? request.leaveType.replace('_', ' ').toUpperCase() : ''}</TableCell>
                     <TableCell>
-                      {new Date(request.startDate).toLocaleDateString()} - {new Date(request.endDate).toLocaleDateString()}
+                      {formatDateSafe(request.startDate)} - {formatDateSafe(request.endDate)}
                     </TableCell>
                     <TableCell>{request.days} {request.days === 1 ? 'day' : 'days'}</TableCell>
                     <TableCell>
@@ -447,7 +448,7 @@ const LeaveRequests = () => {
                         </div>
                       </Badge>
                     </TableCell>
-                    <TableCell>{new Date(request.submissionDate).toLocaleDateString()}</TableCell>
+                    <TableCell>{formatDateSafe(request.submissionDate)}</TableCell>
                     <TableCell>
                       <Dialog>
                         <DialogTrigger asChild>
@@ -475,11 +476,11 @@ const LeaveRequests = () => {
                             <div className="grid grid-cols-2 gap-4">
                               <div>
                                 <label className="text-sm font-medium">Start Date</label>
-                                <p>{new Date(request.startDate).toLocaleDateString()}</p>
+                                <p>{formatDateSafe(request.startDate)}</p>
                               </div>
                               <div>
                                 <label className="text-sm font-medium">End Date</label>
-                                <p>{new Date(request.endDate).toLocaleDateString()}</p>
+                                <p>{formatDateSafe(request.endDate)}</p>
                               </div>
                             </div>
                             <div className="grid grid-cols-2 gap-4">
@@ -489,7 +490,7 @@ const LeaveRequests = () => {
                               </div>
                               <div>
                                 <label className="text-sm font-medium">Submitted</label>
-                                <p>{new Date(request.submissionDate).toLocaleDateString()}</p>
+                                <p>{formatDateSafe(request.submissionDate)}</p>
                               </div>
                             </div>
                             <div>

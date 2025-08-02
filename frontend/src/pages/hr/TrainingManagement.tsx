@@ -14,6 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { BookOpen, Users, Calendar, Award, GraduationCap, CheckCircle, Plus, UserPlus, Edit } from 'lucide-react';
 import { apiClient } from '@/services/apiClient';
+import { normalizeDateTimeForInput, normalizeToISO } from '@/utils/dateUtils';
 
 interface TrainingProgram {
   id: string;
@@ -350,11 +351,11 @@ const TrainingManagement: React.FC = () => {
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <Label>Start Date</Label>
-                        <Input type="datetime-local" value={newTraining.startDate} onChange={e => setNewTraining({ ...newTraining, startDate: e.target.value })} />
+                        <Input type="datetime-local" value={normalizeDateTimeForInput(newTraining.startDate)} onChange={e => setNewTraining({ ...newTraining, startDate: e.target.value })} />
                       </div>
                       <div>
                         <Label>End Date</Label>
-                        <Input type="datetime-local" value={newTraining.endDate} onChange={e => setNewTraining({ ...newTraining, endDate: e.target.value })} />
+                        <Input type="datetime-local" value={normalizeDateTimeForInput(newTraining.endDate)} onChange={e => setNewTraining({ ...newTraining, endDate: e.target.value })} />
                       </div>
                     </div>
                     <Label>Venue</Label>
@@ -637,11 +638,11 @@ const TrainingManagement: React.FC = () => {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <Label>Start Date</Label>
-                      <Input type="datetime-local" value={editForm.startDate} onChange={e => setEditForm({ ...editForm, startDate: e.target.value })} />
+                      <Input type="datetime-local" value={normalizeDateTimeForInput(editForm.startDate)} onChange={e => setEditForm({ ...editForm, startDate: e.target.value })} />
                     </div>
                     <div>
                       <Label>End Date</Label>
-                      <Input type="datetime-local" value={editForm.endDate} onChange={e => setEditForm({ ...editForm, endDate: e.target.value })} />
+                      <Input type="datetime-local" value={normalizeDateTimeForInput(editForm.endDate)} onChange={e => setEditForm({ ...editForm, endDate: e.target.value })} />
                     </div>
                   </div>
                   <Label>Venue</Label>

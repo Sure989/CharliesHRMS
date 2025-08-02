@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import { payrollService } from '@/services/api/payroll.service';
 import { formatCurrencyCompact } from '@/utils/currency';
+import { normalizeDateForInput, normalizeToISO } from '@/utils/dateUtils';
 import PayrollPieChart from '@/components/PayrollPieChart';
 import type {
   PayrollPeriod,
@@ -343,15 +344,15 @@ const PayrollProcessing = () => {
                     </div>
                     <div>
                       <label className="block text-sm font-semibold mb-1 text-gray-700 dark:text-gray-200">Pay Date *</label>
-                      <input className="w-full rounded-md px-3 py-2 bg-white dark:bg-[#181824] text-gray-900 dark:text-white border border-gray-300 dark:border-gray-700 focus:border-blue-400 focus:outline-none transition" type="date" placeholder="Pay Date" value={periodForm?.payDate?.slice(0,10) || ''} onChange={e => setPeriodForm({ ...periodForm, payDate: e.target.value })} required />
+                      <input className="w-full rounded-md px-3 py-2 bg-white dark:bg-[#181824] text-gray-900 dark:text-white border border-gray-300 dark:border-gray-700 focus:border-blue-400 focus:outline-none transition" type="date" placeholder="Pay Date" value={normalizeDateForInput(periodForm?.payDate)} onChange={e => setPeriodForm({ ...periodForm, payDate: e.target.value })} required />
                     </div>
                     <div>
                       <label className="block text-sm font-semibold mb-1 text-gray-700 dark:text-gray-200">Start Date *</label>
-                      <input className="w-full rounded-md px-3 py-2 bg-white dark:bg-[#181824] text-gray-900 dark:text-white border border-gray-300 dark:border-gray-700 focus:border-blue-400 focus:outline-none transition" type="date" placeholder="Start Date" value={periodForm?.startDate?.slice(0,10) || ''} onChange={e => setPeriodForm({ ...periodForm, startDate: e.target.value })} required />
+                      <input className="w-full rounded-md px-3 py-2 bg-white dark:bg-[#181824] text-gray-900 dark:text-white border border-gray-300 dark:border-gray-700 focus:border-blue-400 focus:outline-none transition" type="date" placeholder="Start Date" value={normalizeDateForInput(periodForm?.startDate)} onChange={e => setPeriodForm({ ...periodForm, startDate: e.target.value })} required />
                     </div>
                     <div>
                       <label className="block text-sm font-semibold mb-1 text-gray-700 dark:text-gray-200">End Date *</label>
-                      <input className="w-full rounded-md px-3 py-2 bg-white dark:bg-[#181824] text-gray-900 dark:text-white border border-gray-300 dark:border-gray-700 focus:border-blue-400 focus:outline-none transition" type="date" placeholder="End Date" value={periodForm?.endDate?.slice(0,10) || ''} onChange={e => setPeriodForm({ ...periodForm, endDate: e.target.value })} required />
+                      <input className="w-full rounded-md px-3 py-2 bg-white dark:bg-[#181824] text-gray-900 dark:text-white border border-gray-300 dark:border-gray-700 focus:border-blue-400 focus:outline-none transition" type="date" placeholder="End Date" value={normalizeDateForInput(periodForm?.endDate)} onChange={e => setPeriodForm({ ...periodForm, endDate: e.target.value })} required />
                     </div>
                   </div>
                   <div className="flex flex-row-reverse gap-3 mt-8 pb-4">

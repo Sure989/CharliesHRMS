@@ -16,6 +16,7 @@ import { userService, CreateUserRequest } from '@/services/api/user.service';
 import { branchService } from '@/services/api/branch.service';
 import { employeeService } from '@/services/api/employee.service';
 import { User, Branch } from '@/types/types';
+import { getCurrentDateString } from '@/utils/dateUtils';
 
 const initialAddUser = {
   firstName: '',
@@ -309,7 +310,7 @@ const UserManagement: React.FC = () => {
         lastName: addUser.lastName.trim(),
         email: addUser.email.trim(),
         position: addUser.role, // or set to a default/empty string if needed
-        hireDate: new Date().toISOString().split('T')[0],
+        hireDate: getCurrentDateString(),
         phone: '',
         department: '', // Provide a default or select value if available
         branch: '',     // Provide a default or select value if available
