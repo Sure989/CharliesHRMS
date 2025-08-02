@@ -41,7 +41,7 @@ export const updatePayrollPeriod = async (req: Request, res: Response) => {
  * @route POST /api/payroll/periods/:periodId/process
  */
 import { Request, Response } from 'express';
-import prisma from '../lib/prisma';
+import { prisma } from '../lib/prisma';
 import { calculatePayroll as calculatePayrollService, generatePayStubNumber } from '../services/payrollCalculation.service';
 
 export const processPayrollForPeriod = async (req: Request, res: Response) => {
