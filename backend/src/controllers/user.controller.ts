@@ -1,16 +1,50 @@
 import { Request, Response, NextFunction } from 'express';
 import { prisma } from '../lib/prisma';
 import bcrypt from 'bcrypt';
+import { handleDemoMode, handleDemoModeWithPagination } from '../utils/demoModeHelper';
+import { getMockDataByTenant } from '../utils/comprehensiveMockData';
 
 
 // List all users with filtering options
 export const getUsers = async (req: Request, res: Response) => {
   try {
-    // TODO: Add filtering, pagination, etc.
-    const users = await prisma.user.findMany();
-    res.json({ status: 'success', data: users });
-  } catch {
-    // ...handle error if needed...
+    const tenantId = req.tenantId || 'default';
+    
+    const result = await handleDemoModeWithPagination(
+      req,
+      getMockDataByTenant.users(tenantId),
+      async () => {
+        const users = await prisma.user.findMany({
+          where: { tenantId },
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+            role: true,
+            status: true,
+            lastLogin: true,
+            createdAt: true,
+            updatedAt: true
+          }
+        });
+        
+        const page = parseInt(req.query.page as string) || 1;
+        const limit = parseInt(req.query.limit as string) || 10;
+        
+        return {
+          data: users,
+          total: users.length,
+          page,
+          limit
+        };
+      }
+    );
+    
+    res.json({ status: 'success', ...result });
+  } catch (error) {
+    console.error('Get users error:', error);
+    res.status(500).json({ status: 'error', message: 'Failed to get users' });
   }
 };
 
@@ -232,19 +266,30 @@ export const getUserStats = async (req: Request, res: Response) => {
       return res.status(401).json({ status: 'error', message: 'Tenant ID is required' });
     }
 
-    const [totalUsers, activeUsers, adminUsers, hrManagerUsers] = await Promise.all([
-      prisma.user.count({ where: { tenantId } }),
-      prisma.user.count({ where: { tenantId, status: 'ACTIVE' } }),
-      prisma.user.count({ where: { tenantId, role: 'ADMIN' } }),
-      prisma.user.count({ where: { tenantId, role: 'HR_MANAGER' } })
-    ]);
+    const stats = await handleDemoMode(
+      req,
+      {
+        totalUsers: 4,
+        activeUsers: 4,
+        adminUsers: 1,
+        hrManagerUsers: 1
+      },
+      async () => {
+        const [totalUsers, activeUsers, adminUsers, hrManagerUsers] = await Promise.all([
+          prisma.user.count({ where: { tenantId } }),
+          prisma.user.count({ where: { tenantId, status: 'ACTIVE' } }),
+          prisma.user.count({ where: { tenantId, role: 'ADMIN' } }),
+          prisma.user.count({ where: { tenantId, role: 'HR_MANAGER' } })
+        ]);
 
-    const stats = {
-      totalUsers,
-      activeUsers,
-      adminUsers,
-      hrManagerUsers
-    };
+        return {
+          totalUsers,
+          activeUsers,
+          adminUsers,
+          hrManagerUsers
+        };
+      }
+    );
 
     res.json({ status: 'success', data: stats });
   } catch (error) {
