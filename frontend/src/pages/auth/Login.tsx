@@ -102,7 +102,7 @@ const Login = () => {
               <a href="#" className="hover:text-gray-700">Privacy Policy</a>
               <a href="#" className="hover:text-gray-700">How to Support</a>
             </div>
-            <p className="text-xs text-gray-400 mt-2 text-center">Copyright 2024 Charlie's HRMS</p>
+            <p className="text-xs text-gray-400 mt-2 text-center">Copyright 2025 Charlie's HRMS</p>
           </div>
         </div>
       </div>
@@ -146,8 +146,8 @@ const Login = () => {
               Charlie's HRMS has been one of the best HR solutions we came across and is very affordable. The solution covers all important aspects of human resources and is recommended for companies of all sizes.
             </p>
             <div className="text-right">
-              <p className="text-sm text-gray-400">Naveen Dhiraj</p>
-              <p className="text-xs text-gray-500">BrandGarage</p>
+              <p className="text-sm text-gray-400">Sure Arnold</p>
+              <p className="text-xs text-gray-500">Hachete Design</p>
             </div>
           </div>
         </div>
