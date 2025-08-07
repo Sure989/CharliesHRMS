@@ -1,5 +1,5 @@
 import prisma from '../lib/prisma';
-import { getMockAnalytics } from '../utils/mockData';
+import { getMockDashboardMetrics } from '../utils/mockData';
 
 export interface AnalyticsData {
   [key: string]: any;
