@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, memo, useCallback } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -8,6 +8,35 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Users, Building, TrendingUp, Award, Clock, FileText } from 'lucide-react';
 
+const HRFeaturesGrid = memo(() => (
+  <div className="grid grid-cols-3 gap-6 mb-8">
+    <div className="flex flex-col items-center p-4 bg-white/10 rounded-xl backdrop-blur-sm">
+      <Users className="w-8 h-8 text-blue-300 mb-2" />
+      <span className="text-xs text-center">Employee Management</span>
+    </div>
+    <div className="flex flex-col items-center p-4 bg-white/10 rounded-xl backdrop-blur-sm">
+      <Building className="w-8 h-8 text-blue-300 mb-2" />
+      <span className="text-xs text-center">Organization</span>
+    </div>
+    <div className="flex flex-col items-center p-4 bg-white/10 rounded-xl backdrop-blur-sm">
+      <TrendingUp className="w-8 h-8 text-blue-300 mb-2" />
+      <span className="text-xs text-center">Performance</span>
+    </div>
+    <div className="flex flex-col items-center p-4 bg-white/10 rounded-xl backdrop-blur-sm">
+      <Award className="w-8 h-8 text-blue-300 mb-2" />
+      <span className="text-xs text-center">Leadership</span>
+    </div>
+    <div className="flex flex-col items-center p-4 bg-white/10 rounded-xl backdrop-blur-sm">
+      <Clock className="w-8 h-8 text-blue-300 mb-2" />
+      <span className="text-xs text-center">Time Tracking</span>
+    </div>
+    <div className="flex flex-col items-center p-4 bg-white/10 rounded-xl backdrop-blur-sm">
+      <FileText className="w-8 h-8 text-blue-300 mb-2" />
+      <span className="text-xs text-center">Reports</span>
+    </div>
+  </div>
+));
+
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -15,11 +44,7 @@ const Login = () => {
   const { login, isAuthenticated } = useAuth();
   const { toast } = useToast();
 
-  if (isAuthenticated) {
-    return <Navigate to="/dashboard" replace />;
-  }
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
 
@@ -39,12 +64,16 @@ const Login = () => {
     }
     
     setIsSubmitting(false);
-  };
+  }, [email, password, login, toast]);
+
+  if (isAuthenticated) {
+    return <Navigate to="/dashboard" replace />;
+  }
 
   return (
-    <div className="min-h-screen flex">
+    <div className="min-h-screen flex flex-col lg:flex-row">
       {/* Left Panel - Login Form */}
-      <div className="flex-1 flex items-center justify-center bg-white px-8 py-12">
+      <div className="flex-1 flex items-center justify-center bg-white px-4 lg:px-8 py-6 lg:py-12">
         <div className="w-full max-w-md">
           <div className="mb-8">
             <div className="flex items-center mb-6">
@@ -108,33 +137,16 @@ const Login = () => {
       </div>
 
       {/* Right Panel - HR Features Showcase */}
-      <div className="flex-1 bg-gradient-to-br from-slate-800 to-slate-900 flex items-center justify-center px-8 py-12">
-        <div className="max-w-lg text-white">
-          <div className="grid grid-cols-3 gap-6 mb-8">
-            <div className="flex flex-col items-center p-4 bg-white/10 rounded-xl backdrop-blur-sm">
-              <Users className="w-8 h-8 text-blue-300 mb-2" />
-              <span className="text-xs text-center">Employee Management</span>
-            </div>
-            <div className="flex flex-col items-center p-4 bg-white/10 rounded-xl backdrop-blur-sm">
-              <Building className="w-8 h-8 text-blue-300 mb-2" />
-              <span className="text-xs text-center">Organization</span>
-            </div>
-            <div className="flex flex-col items-center p-4 bg-white/10 rounded-xl backdrop-blur-sm">
-              <TrendingUp className="w-8 h-8 text-blue-300 mb-2" />
-              <span className="text-xs text-center">Performance</span>
-            </div>
-            <div className="flex flex-col items-center p-4 bg-white/10 rounded-xl backdrop-blur-sm">
-              <Award className="w-8 h-8 text-blue-300 mb-2" />
-              <span className="text-xs text-center">Leadership</span>
-            </div>
-            <div className="flex flex-col items-center p-4 bg-white/10 rounded-xl backdrop-blur-sm">
-              <Clock className="w-8 h-8 text-blue-300 mb-2" />
-              <span className="text-xs text-center">Time Tracking</span>
-            </div>
-            <div className="flex flex-col items-center p-4 bg-white/10 rounded-xl backdrop-blur-sm">
-              <FileText className="w-8 h-8 text-blue-300 mb-2" />
-              <span className="text-xs text-center">Reports</span>
-            </div>
+      <div className="flex-1 bg-gradient-to-br from-slate-800 to-slate-900 flex items-center justify-center px-4 lg:px-8 py-6 lg:py-12 order-first lg:order-last">
+        <div className="max-w-lg text-white text-center lg:text-left">
+          <div className="hidden lg:block">
+            <HRFeaturesGrid />
+          </div>
+          <div className="lg:hidden mb-4">
+            <h2 className="text-2xl font-bold mb-2">
+              <span className="text-blue-300">CHARLIE'S</span><br />
+              <span className="text-white">HRMS</span>
+            </h2>
           </div>
           
           <div className="text-center">
