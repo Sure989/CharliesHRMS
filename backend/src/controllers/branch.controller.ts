@@ -1,5 +1,7 @@
 import { Request, Response } from 'express';
 import prisma from '../lib/prisma';
+import { handleDemoMode, handleDemoModeWithPagination } from '../utils/demoModeHelper';
+import { getMockDataByTenant } from '../utils/comprehensiveMockData';
 
 /**
  * Get all branches for a tenant
@@ -14,22 +16,48 @@ export const getBranches = async (req: Request, res: Response) => {
       });
     }
 
-    const branches = await prisma.branch.findMany({
-      where: { tenantId: req.tenantId },
-      include: {
-        department: {
-          select: {
-            id: true,
-            name: true,
+    const tenantId = req.tenantId;
+    
+    const result = await handleDemoModeWithPagination(
+      req,
+      getMockDataByTenant.branches(tenantId).map(branch => ({
+        ...branch,
+        department: { id: branch.departmentId, name: 'Demo Department' }
+      })),
+      async () => {
+        const branches = await prisma.branch.findMany({
+          where: { tenantId: req.tenantId },
+          include: {
+            department: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
           },
-        },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+          orderBy: { createdAt: 'desc' },
+        });
+
+        const page = parseInt(req.query.page as string) || 1;
+        const limit = parseInt(req.query.limit as string) || 10;
+        
+        return {
+          data: branches,
+          total: branches.length,
+          page,
+          limit
+        };
+      }
+    );
 
     return res.status(200).json({
       status: 'success',
-      data: { branches },
+      data: { branches: result.data },
+      pagination: {
+        total: result.total,
+        page: result.page,
+        limit: result.limit
+      }
     });
   } catch (error) {
     console.error('Get branches error:', error);
