@@ -118,4 +118,53 @@ router.get('/debug/user', async (req, res) => {
   }
 });
 
+// Fix demo users endpoint
+router.post('/debug/fix-demo-users', async (req, res) => {
+  try {
+    const demoEmails = [
+      'admin@charlieshrms.com',
+      'hr@charlieshrms.com',
+      'operations@charlieshrms.com',
+      'employee@charlieshrms.com'
+    ];
+
+    // Update demo users
+    const updateResult = await prisma.user.updateMany({
+      where: {
+        email: { in: demoEmails }
+      },
+      data: {
+        isDemo: true
+      }
+    });
+
+    // Get updated users
+    const updatedUsers = await prisma.user.findMany({
+      where: {
+        email: { in: demoEmails }
+      },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        role: true,
+        isDemo: true
+      }
+    });
+
+    return res.status(200).json({
+      status: 'success',
+      message: `Updated ${updateResult.count} demo users`,
+      data: {
+        updatedCount: updateResult.count,
+        users: updatedUsers
+      }
+    });
+  } catch (error) {
+    console.error('Fix demo users error:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 export default router;
