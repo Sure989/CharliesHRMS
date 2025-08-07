@@ -304,7 +304,7 @@ export const exportAnalytics = async (req: Request, res: Response) => {
     let data;
     switch (type) {
       case 'dashboard':
-        data = await getDashboardMetrics(req.tenantId);
+        data = await getDashboardMetrics(req.tenantId, undefined, req.user?.isDemo || false);
         break;
       case 'employees':
         data = await getEmployeeAnalytics(req.tenantId);
@@ -405,7 +405,7 @@ export const getRealTimeMetrics = async (req: Request, res: Response) => {
     if (!tenantId) {
       return res.status(401).json({ status: 'error', message: 'Tenant ID is required' });
     }
-    const data = await getRealTimeMetricsService(tenantId);
+    const data = await getRealTimeMetricsService(tenantId, req.user?.isDemo || false);
     return res.status(200).json({ status: 'success', data });
   } catch (error) {
     console.error('Get real-time metrics error:', error);

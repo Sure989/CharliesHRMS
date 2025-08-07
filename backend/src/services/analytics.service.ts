@@ -1185,8 +1185,8 @@ export async function generateCustomAnalytics(
 /**
  * Get real-time metrics for dashboard
  */
-export async function getRealTimeMetrics(tenantId: string) {
-  return await getDashboardMetrics(tenantId);
+export async function getRealTimeMetrics(tenantId: string, isDemo: boolean = false) {
+  return await getDashboardMetrics(tenantId, undefined, isDemo);
 }
 
 /**

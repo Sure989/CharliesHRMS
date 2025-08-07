@@ -173,6 +173,6 @@ export const getMockPayrollPeriods = (tenantId: string) => mockPayrollPeriods.fi
 export const getMockLeaveRequests = (tenantId: string) => mockLeaveRequests.filter(lr => lr.tenantId === tenantId);
 export const getMockSalaryAdvances = (tenantId: string) => mockSalaryAdvances.filter(sa => sa.tenantId === tenantId);
 export const getMockPerformanceReviews = (tenantId: string) => mockPerformanceReviews.filter(pr => pr.tenantId === tenantId);
-export const getMockDashboardMetrics = (tenantId: string) => ({ ...mockDashboardMetrics, tenantId });
+export const getMockDashboardMetrics = (tenantId: string): DashboardMetrics => ({ ...mockDashboardMetrics, tenantId });
 
 // Add more getters for other models as needed

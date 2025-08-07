@@ -23,7 +23,7 @@ router.get('/metrics', async (req, res) => {
     const tenantId = req.tenantId || 'default';
     const branchId = req.query.branchId as string | undefined;
     
-    const metrics = await getDashboardMetrics(tenantId, branchId);
+    const metrics = await getDashboardMetrics(tenantId, branchId, req.user?.isDemo || false);
     console.log('[DEBUG] Metrics fetched successfully:', Object.keys(metrics));
     
     return res.status(200).json({
