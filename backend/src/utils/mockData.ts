@@ -1,4 +1,5 @@
 import { Employee, Payroll, PayrollPeriod, LeaveRequest, SalaryAdvanceRequest, PerformanceReview } from '@prisma/client';
+import { DashboardMetrics } from '../services/analytics.service';
 
 // Mock Users (minimal, since auth uses real users but data is mocked)
 const mockUsers = [
