@@ -18,13 +18,23 @@ router.get('/metrics', async (req, res) => {
     console.log('[DEBUG] Dashboard metrics endpoint called');
     console.log('[DEBUG] Request user:', req.user);
     console.log('[DEBUG] Request tenantId:', req.tenantId);
+    console.log('[DEBUG] User isDemo flag:', req.user?.isDemo);
+    console.log('[DEBUG] Will use demo mode:', req.user?.isDemo || false);
     
     // Use tenantId if available, otherwise use 'default' or null for testing
     const tenantId = req.tenantId || 'default';
     const branchId = req.query.branchId as string | undefined;
     
-    const metrics = await getDashboardMetrics(tenantId, branchId, req.user?.isDemo || false);
+    const isDemo = req.user?.isDemo || false;
+    console.log('[DEBUG] Calling getDashboardMetrics with isDemo:', isDemo);
+    
+    const metrics = await getDashboardMetrics(tenantId, branchId, isDemo);
     console.log('[DEBUG] Metrics fetched successfully:', Object.keys(metrics));
+    console.log('[DEBUG] Sample metric values:', {
+      totalEmployees: metrics.totalEmployees,
+      activeEmployees: metrics.activeEmployees,
+      pendingLeaveRequests: metrics.pendingLeaveRequests
+    });
     
     return res.status(200).json({
       status: 'success',
@@ -70,5 +80,42 @@ router.get('/test', async (req, res) => {
 });
 
 router.get('/employee/:employeeId', getEmployeeDashboard);
+
+// Debug route to check demo user status
+router.get('/debug/user', async (req, res) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    // Get full user details from database
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.userId },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        role: true,
+        isDemo: true,
+        tenantId: true
+      }
+    });
+
+    return res.status(200).json({
+      status: 'success',
+      data: {
+        tokenUser: req.user,
+        databaseUser: user,
+        isDemoFromToken: req.user?.isDemo,
+        isDemoFromDB: user?.isDemo,
+        shouldUseMockData: req.user?.isDemo || false
+      }
+    });
+  } catch (error) {
+    console.error('Debug user error:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
 
 export default router;

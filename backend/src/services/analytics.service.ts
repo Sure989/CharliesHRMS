@@ -74,10 +74,20 @@ export interface DashboardMetrics {
  * Get dashboard metrics for overview
  */
 export async function getDashboardMetrics(tenantId: string = 'default', branchId?: string, isDemo: boolean = false): Promise<any> {
+  console.log('[DEBUG] getDashboardMetrics called with:', { tenantId, branchId, isDemo });
+  
   if (isDemo) {
-    // Return mock data for demo users
-    return getMockDashboardMetrics(tenantId);
+    console.log('[DEBUG] Returning mock data for demo user');
+    const mockData = getMockDashboardMetrics(tenantId);
+    console.log('[DEBUG] Mock data sample:', {
+      totalEmployees: mockData.totalEmployees,
+      activeEmployees: mockData.activeEmployees,
+      pendingLeaveRequests: mockData.pendingLeaveRequests
+    });
+    return mockData;
   }
+  
+  console.log('[DEBUG] Proceeding with real database queries for non-demo user');
 
   // ...existing code...
   
