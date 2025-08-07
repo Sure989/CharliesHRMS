@@ -67,7 +67,7 @@ async function main() {
   const hashedPassword = await bcrypt.hash('password123', 10);
   const adminUser = await prisma.user.upsert({
     where: { email: 'admin@charlieshrms.com' },
-    update: {},
+    update: { isDemo: true },
     create: {
       email: 'admin@charlieshrms.com',
       passwordHash: hashedPassword,
@@ -76,11 +76,12 @@ async function main() {
       role: 'ADMIN',
       status: 'ACTIVE',
       tenantId: "5bba6f14-accf-4e64-b85c-db4d3fa9c848",
+      isDemo: true,
     },
   });
   const hrUser = await prisma.user.upsert({
     where: { email: 'hr@charlieshrms.com' },
-    update: {},
+    update: { isDemo: true },
     create: {
       email: 'hr@charlieshrms.com',
       passwordHash: hashedPassword,
@@ -89,11 +90,12 @@ async function main() {
       role: 'HR_MANAGER',
       status: 'ACTIVE',
     tenantId: "5bba6f14-accf-4e64-b85c-db4d3fa9c848",
+      isDemo: true,
     },
   });
   const opsUser = await prisma.user.upsert({
     where: { email: 'operations@charlieshrms.com' },
-    update: {},
+    update: { isDemo: true },
     create: {
       email: 'operations@charlieshrms.com',
       passwordHash: hashedPassword,
@@ -102,11 +104,12 @@ async function main() {
       role: 'OPERATIONS_MANAGER',
       status: 'ACTIVE',
     tenantId: "5bba6f14-accf-4e64-b85c-db4d3fa9c848",
+      isDemo: true,
     },
   });
   const employeeUser = await prisma.user.upsert({
     where: { email: 'employee@charlieshrms.com' },
-    update: {},
+    update: { isDemo: true },
     create: {
       email: 'employee@charlieshrms.com',
       passwordHash: hashedPassword,
@@ -115,6 +118,7 @@ async function main() {
       role: 'EMPLOYEE',
       status: 'ACTIVE',
     tenantId: "5bba6f14-accf-4e64-b85c-db4d3fa9c848",
+      isDemo: true,
     },
   });
   console.log('Demo users created!');

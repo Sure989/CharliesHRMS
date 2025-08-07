@@ -5,6 +5,7 @@ export interface TokenPayload {
   userId: string;
   role: string;
   tenantId: string;
+  isDemo?: boolean;
 }
 
 /**

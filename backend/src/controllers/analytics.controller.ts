@@ -28,7 +28,7 @@ export const getDashboard = async (req: Request, res: Response) => {
       });
     }
 
-    const metrics = await getDashboardMetrics(req.tenantId);
+    const metrics = await getDashboardMetrics(req.tenantId, undefined, req.user?.isDemo || false);
 
     return res.status(200).json({
       status: 'success',
@@ -228,7 +228,7 @@ export const getSummary = async (req: Request, res: Response) => {
 
     // Get summary data from all analytics modules
     const [dashboard, employees, payroll, leave, performance] = await Promise.all([
-      getDashboardMetrics(req.tenantId),
+      getDashboardMetrics(req.tenantId, undefined, req.user?.isDemo || false),
       getEmployeeAnalytics(req.tenantId),
       getPayrollAnalytics(req.tenantId),
       getLeaveAnalytics(req.tenantId),

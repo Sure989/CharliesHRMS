@@ -99,6 +99,8 @@ model User {
   notifications      Notification[]
   permissions        String[]      @default([])
 
+  isDemo             Boolean       @default(false)
+
   @@index([email])
   @@index([tenantId])
   @@map("users")

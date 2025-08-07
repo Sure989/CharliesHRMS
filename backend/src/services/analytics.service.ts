@@ -1,4 +1,5 @@
 import prisma from '../lib/prisma';
+import { getMockAnalytics } from '../utils/mockData';
 
 export interface AnalyticsData {
   [key: string]: any;
@@ -72,7 +73,12 @@ export interface DashboardMetrics {
 /**
  * Get dashboard metrics for overview
  */
-export async function getDashboardMetrics(tenantId: string = 'default', branchId?: string): Promise<any> {
+export async function getDashboardMetrics(tenantId: string = 'default', branchId?: string, isDemo: boolean = false): Promise<any> {
+  if (isDemo) {
+    // Return mock data for demo users
+    return getMockDashboardMetrics(tenantId);
+  }
+
   // ...existing code...
   
   // If tenantId is 'default', get the first available tenant

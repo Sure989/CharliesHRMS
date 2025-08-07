@@ -62,6 +62,7 @@ export const login = async (req: Request, res: Response) => {
       userId: user.id,
       role: user.role,
       tenantId: user.tenantId || tenantId,
+      isDemo: user.isDemo || false,
     };
 
     // Generate tokens
@@ -216,6 +217,7 @@ export const refreshToken = async (req: Request, res: Response) => {
       userId: session.user.id,
       role: session.user.role,
       tenantId: tenantIdForToken,
+      isDemo: session.user.isDemo || false,
     };
 
     // Generate new access token
@@ -386,6 +388,7 @@ export const register = async (req: Request, res: Response) => {
       userId: user.id,
       role: user.role,
       tenantId: user.tenantId,
+      isDemo: user.isDemo || false,
     };
 
     const accessToken = generateToken(tokenPayload);
