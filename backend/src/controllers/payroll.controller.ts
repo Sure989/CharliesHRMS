@@ -43,6 +43,8 @@ export const updatePayrollPeriod = async (req: Request, res: Response) => {
 import { Request, Response } from 'express';
 import { prisma } from '../lib/prisma';
 import { calculatePayroll as calculatePayrollService, generatePayStubNumber } from '../services/payrollCalculation.service';
+import { handleDemoMode, handleDemoModeWithPagination } from '../utils/demoModeHelper';
+import { getMockDataByTenant } from '../utils/comprehensiveMockData';
 
 export const processPayrollForPeriod = async (req: Request, res: Response) => {
   try {
@@ -227,18 +229,29 @@ export const getPayrollPeriods = async (req: Request, res: Response) => {
       });
     }
 
-    const periods = await prisma.payrollPeriod.findMany({
-      where: { tenantId: req.tenantId },
-      include: {
-        _count: {
-          select: {
-            payrolls: true,
-            payStubs: true,
+    const tenantId = req.tenantId;
+    
+    const periods = await handleDemoMode(
+      req,
+      getMockDataByTenant.payrollPeriods(tenantId).map(period => ({
+        ...period,
+        _count: { payrolls: 2, payStubs: 2 }
+      })),
+      async () => {
+        return await prisma.payrollPeriod.findMany({
+          where: { tenantId: req.tenantId },
+          include: {
+            _count: {
+              select: {
+                payrolls: true,
+                payStubs: true,
+              },
+            },
           },
-        },
-      },
-      orderBy: { startDate: 'desc' },
-    });
+          orderBy: { startDate: 'desc' },
+        });
+      }
+    );
 
     return res.status(200).json({
       status: 'success',
