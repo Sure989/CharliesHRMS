@@ -9,6 +9,8 @@ import {
   // eslint-disable-next-line no-unused-vars
   initializeEmployeeLeaveBalances,
 } from '../services/leaveManagement.service';
+import { handleDemoMode, handleDemoModeWithPagination } from '../utils/demoModeHelper';
+import { getMockDataByTenant } from '../utils/comprehensiveMockData';
 
 /**
  * Get all leave types for a tenant
@@ -278,98 +280,123 @@ export const getLeaveRequests = async (req: Request, res: Response) => {
       });
     }
 
-    const where = { tenantId: req.tenantId } as any;
-
-    if (employeeId) where.employeeId = employeeId;
-    if (status) where.status = status;
-    if (leaveTypeId) where.leaveTypeId = leaveTypeId;
-    if (startDate && endDate) {
-      where.startDate = { gte: new Date(startDate as string) };
-      where.endDate = { lte: new Date(endDate as string) };
-    }
-
-
-    // Filter by branch for operations managers
-    if (req.user?.role === 'OPS_MANAGER') {
-      // Get user's employee record to find their branch
-      const userEmployee = await prisma.employee.findFirst({
-        where: { 
-          user: { id: req.user.userId },
-          tenantId: req.tenantId 
-        }
-      });
-      
-      if (userEmployee?.branchId) {
-        where.branchId = userEmployee.branchId;
-      }
-    }
+    const tenantId = req.tenantId;
     
-    // Additional filtering by branch name or branchId from query params
-    if (branchName || branchId) {
-      where.employee = {};
-      if (branchName) {
-        where.employee.branch = {
-          is: { name: { equals: branchName, mode: 'insensitive' } }
-        };
-      }
-      if (branchId) {
-        where.branchId = branchId;
-      }
-    }
+    const result = await handleDemoModeWithPagination(
+      req,
+      getMockDataByTenant.leaveRequests(tenantId).map(leave => ({
+        ...leave,
+        employee: {
+          id: leave.employeeId,
+          employeeNumber: 'EMP001',
+          firstName: 'Demo',
+          lastName: 'Employee',
+          position: 'Staff',
+          branch: { name: 'Demo Branch', managerUserId: 'demo-manager', managerId: 'demo-manager' }
+        },
+        leaveType: {
+          id: leave.leaveTypeId,
+          name: 'Annual Leave',
+          code: 'AL',
+          color: '#4CAF50'
+        },
+        managerUserId: 'demo-manager',
+        managerId: 'demo-manager'
+      })),
+      async () => {
+        const where = { tenantId: req.tenantId } as any;
 
-    let leaveRequests;
-    try {
-      leaveRequests = await prisma.leaveRequest.findMany({
-        where,
-        include: {
-          employee: {
-            select: {
-              id: true,
-              employeeNumber: true,
-              firstName: true,
-              lastName: true,
-              position: true,
-              branch: {
-                select: {
-                  name: true,
-                  managerUserId: true,
-                  managerId: true,
+        if (employeeId) where.employeeId = employeeId;
+        if (status) where.status = status;
+        if (leaveTypeId) where.leaveTypeId = leaveTypeId;
+        if (startDate && endDate) {
+          where.startDate = { gte: new Date(startDate as string) };
+          where.endDate = { lte: new Date(endDate as string) };
+        }
+
+        // Filter by branch for operations managers
+        if (req.user?.role === 'OPS_MANAGER') {
+          const userEmployee = await prisma.employee.findFirst({
+            where: { 
+              user: { id: req.user.userId },
+              tenantId: req.tenantId 
+            }
+          });
+          
+          if (userEmployee?.branchId) {
+            where.branchId = userEmployee.branchId;
+          }
+        }
+        
+        if (branchName || branchId) {
+          where.employee = {};
+          if (branchName) {
+            where.employee.branch = {
+              is: { name: { equals: branchName, mode: 'insensitive' } }
+            };
+          }
+          if (branchId) {
+            where.branchId = branchId;
+          }
+        }
+
+        const leaveRequests = await prisma.leaveRequest.findMany({
+          where,
+          include: {
+            employee: {
+              select: {
+                id: true,
+                employeeNumber: true,
+                firstName: true,
+                lastName: true,
+                position: true,
+                branch: {
+                  select: {
+                    name: true,
+                    managerUserId: true,
+                    managerId: true,
+                  },
                 },
               },
             },
-          },
-          leaveType: {
-            select: {
-              id: true,
-              name: true,
-              code: true,
-              color: true,
+            leaveType: {
+              select: {
+                id: true,
+                name: true,
+                code: true,
+                color: true,
+              },
             },
           },
-        },
-        orderBy: { appliedAt: 'desc' },
-      });
-    } catch (prismaError) {
-      console.error('Prisma query error in getLeaveRequests:', prismaError);
-      console.error('Query filter used:', JSON.stringify(where, null, 2));
-      return res.status(500).json({
-        status: 'error',
-        message: 'Prisma query error while fetching leave requests',
-        details: prismaError instanceof Error ? prismaError.message : prismaError,
-        filter: where,
-      });
-    }
+          orderBy: { appliedAt: 'desc' },
+        });
 
-    // Add managerUserId and opsManagerId to each leaveRequest for frontend filtering
-    const enrichedLeaveRequests = leaveRequests.map((req: any) => ({
-      ...req,
-      managerUserId: req.employee?.branch?.managerUserId || '',
-      managerId: req.employee?.branch?.managerId || (req.employee?.position === 'Operations Manager' ? req.employee.id : ''),
-    }));
+        const enrichedLeaveRequests = leaveRequests.map((req: any) => ({
+          ...req,
+          managerUserId: req.employee?.branch?.managerUserId || '',
+          managerId: req.employee?.branch?.managerId || (req.employee?.position === 'Operations Manager' ? req.employee.id : ''),
+        }));
+
+        const page = parseInt(req.query.page as string) || 1;
+        const limit = parseInt(req.query.limit as string) || 10;
+        
+        return {
+          data: enrichedLeaveRequests,
+          total: enrichedLeaveRequests.length,
+          page,
+          limit
+        };
+      }
+    );
 
     return res.status(200).json({
       status: 'success',
-      data: { leaveRequests: enrichedLeaveRequests },
+      data: { leaveRequests: result.data },
+      pagination: {
+        total: result.total,
+        page: result.page,
+        limit: result.limit
+      }
     });
   } catch (error) {
     console.error('General error in getLeaveRequests:', error);

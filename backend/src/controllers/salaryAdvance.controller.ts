@@ -60,6 +60,8 @@ export const createSalaryAdvanceRequest = async (req: Request, res: Response) =>
 };
 import { Request, Response } from 'express';
 import { getSalaryAdvanceRequests as getSalaryAdvanceRequestsService } from '../services/salaryAdvance.service';
+import { handleDemoMode, handleDemoModeWithPagination } from '../utils/demoModeHelper';
+import { getMockDataByTenant } from '../utils/comprehensiveMockData';
 
 /**
  * Get salary advance requests with optional filters
@@ -72,21 +74,49 @@ export const getSalaryAdvanceRequests = async (req: Request, res: Response) => {
     if (!tenantId) {
       return res.status(401).json({ status: 'error', message: 'Tenant ID is required' });
     }
-    // Collect filters from query params (exclude tenantId)
-    // eslint-disable-next-line no-unused-vars
-    const { tenantId: _omit, ...filters } = req.query;
-    
-    // Add user role and ID for branch filtering
-    const enhancedFilters = {
-      ...filters,
-      userRole: req.user?.role,
-      userId: req.user?.userId
-    };
-    
-    console.log('[HRMS][GET /api/salary-advances] filters:', enhancedFilters);
-    const data = await getSalaryAdvanceRequestsService(tenantId, enhancedFilters);
-    console.log('[HRMS][GET /api/salary-advances] result count:', Array.isArray(data?.requests) ? data.requests.length : 'n/a');
-    return res.status(200).json({ status: 'success', data });
+
+    const result = await handleDemoMode(
+      req,
+      {
+        requests: getMockDataByTenant.salaryAdvances(tenantId).map(advance => ({
+          ...advance,
+          employee: {
+            id: advance.employeeId,
+            firstName: 'Demo',
+            lastName: 'Employee',
+            employeeNumber: 'EMP001',
+            position: 'Staff',
+            department: { name: 'Demo Department' },
+            branch: { name: 'Demo Branch' }
+          }
+        })),
+        summary: {
+          totalRequests: 2,
+          pendingRequests: 1,
+          approvedRequests: 1,
+          totalAmount: 50000
+        }
+      },
+      async () => {
+        // Collect filters from query params (exclude tenantId)
+        // eslint-disable-next-line no-unused-vars
+        const { tenantId: _omit, ...filters } = req.query;
+        
+        // Add user role and ID for branch filtering
+        const enhancedFilters = {
+          ...filters,
+          userRole: req.user?.role,
+          userId: req.user?.userId
+        };
+        
+        console.log('[HRMS][GET /api/salary-advances] filters:', enhancedFilters);
+        const data = await getSalaryAdvanceRequestsService(tenantId, enhancedFilters);
+        console.log('[HRMS][GET /api/salary-advances] result count:', Array.isArray(data?.requests) ? data.requests.length : 'n/a');
+        return data;
+      }
+    );
+
+    return res.status(200).json({ status: 'success', data: result });
   } catch (error) {
     console.error('Get salary advance requests error:', error);
     return res.status(500).json({ status: 'error', message: 'Internal server error while fetching salary advance requests' });

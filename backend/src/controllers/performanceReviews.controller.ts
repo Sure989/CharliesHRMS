@@ -1,56 +1,80 @@
 import { Request, Response } from 'express';
 import prisma from '../lib/prisma';
+import { handleDemoMode } from '../utils/demoModeHelper';
+import { getMockDataByTenant } from '../utils/comprehensiveMockData';
 
 export const getPerformanceReviews = async (req: Request, res: Response) => {
   try {
     // Get tenant ID from request (set by auth middleware)
     const tenantId = req.tenantId!;
     
-    // Fetch reviews with employee, reviewer, and cycle info
-    const reviews = await prisma.performanceReview.findMany({
-      where: {
-        tenantId
-      },
-      include: {
+    const result = await handleDemoMode(
+      req,
+      getMockDataByTenant.performanceReviews(tenantId).map(review => ({
+        id: review.id,
         employee: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            position: true,
-            branch: {
-              select: { name: true }
+          id: review.employeeId,
+          name: 'Demo Employee',
+          department: 'Demo Department',
+          branch: 'Demo Branch',
+          position: 'Staff',
+        },
+        reviewer: 'HR Manager',
+        period: 'Q1 2024',
+        score: review.overallRating,
+        summary: review.overallComments,
+        status: review.status,
+        createdAt: review.createdAt,
+      })),
+      async () => {
+        // Fetch reviews with employee, reviewer, and cycle info
+        const reviews = await prisma.performanceReview.findMany({
+          where: {
+            tenantId
+          },
+          include: {
+            employee: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                position: true,
+                branch: {
+                  select: { name: true }
+                },
+                department: {
+                  select: { name: true }
+                }
+              }
             },
-            department: {
+            reviewCycle: {
               select: { name: true }
             }
-          }
-        },
-        reviewCycle: {
-          select: { name: true }
-        }
-      },
-      orderBy: { createdAt: 'desc' }
-    });
+          },
+          orderBy: { createdAt: 'desc' }
+        });
 
-    // Map to frontend shape
-    const mapped = reviews.map(r => ({
-      id: r.id,
-      employee: {
-        id: r.employee.id,
-        name: `${r.employee.firstName} ${r.employee.lastName}`,
-        department: r.employee.department?.name || '',
-        branch: r.employee.branch?.name || '',
-        position: r.employee.position || '',
-      },
-      reviewer: 'HR Manager',
-      period: r.reviewCycle?.name || '',
-      score: r.overallRating,
-      summary: r.overallComments,
-      status: r.status,
-      createdAt: r.createdAt,
-    }));
-    res.json({ reviews: mapped });
+        // Map to frontend shape
+        return reviews.map(r => ({
+          id: r.id,
+          employee: {
+            id: r.employee.id,
+            name: `${r.employee.firstName} ${r.employee.lastName}`,
+            department: r.employee.department?.name || '',
+            branch: r.employee.branch?.name || '',
+            position: r.employee.position || '',
+          },
+          reviewer: 'HR Manager',
+          period: r.reviewCycle?.name || '',
+          score: r.overallRating,
+          summary: r.overallComments,
+          status: r.status,
+          createdAt: r.createdAt,
+        }));
+      }
+    );
+
+    res.json({ reviews: result });
   } catch (e) {
     console.error('Error fetching performance reviews:', e);
     res.status(500).json({ error: 'Failed to fetch performance reviews' });
