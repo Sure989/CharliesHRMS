@@ -3,6 +3,8 @@ import bcrypt from 'bcrypt';
 import prisma from '../lib/prisma';
 import { employeeService } from '../services/configuredServices';
 import config from '../config/config';
+import { handleDemoMode, handleDemoModeWithPagination } from '../utils/demoModeHelper';
+import { getMockDataByTenant } from '../utils/comprehensiveMockData';
 
 /**
  * Get an employee by employeeNumber (business ID)
@@ -53,20 +55,46 @@ export const getEmployeeByEmployeeNumber = async (req: Request, res: Response) =
 export const getEmployees = async (req: Request, res: Response) => {
   try {
     const includeRelations = req.query.includeRelations === 'true';
+    const tenantId = req.tenantId || 'default';
     
-    const employees = await prisma.employee.findMany({
-      where: {
-        tenantId: req.tenantId,
-      },
-      include: {
-        department: includeRelations,
-        branch: includeRelations,
-      },
-    });
+    const result = await handleDemoModeWithPagination(
+      req,
+      getMockDataByTenant.employees(tenantId).map(emp => ({
+        ...emp,
+        department: includeRelations ? { id: emp.departmentId, name: 'Demo Department' } : undefined,
+        branch: includeRelations ? { id: emp.branchId, name: 'Demo Branch' } : undefined
+      })),
+      async () => {
+        const employees = await prisma.employee.findMany({
+          where: {
+            tenantId: req.tenantId,
+          },
+          include: {
+            department: includeRelations,
+            branch: includeRelations,
+          },
+        });
+
+        const page = parseInt(req.query.page as string) || 1;
+        const limit = parseInt(req.query.limit as string) || 10;
+        
+        return {
+          data: employees,
+          total: employees.length,
+          page,
+          limit
+        };
+      }
+    );
 
     return res.status(200).json({
       status: 'success',
-      data: { employees },
+      data: { employees: result.data },
+      pagination: {
+        total: result.total,
+        page: result.page,
+        limit: result.limit
+      }
     });
   } catch (error) {
     console.error('Get employees error:', error);

@@ -57,6 +57,8 @@ export const getDepartmentStats = async (req: Request, res: Response) => {
 };
 import { Request, Response } from 'express';
 import prisma from '../lib/prisma';
+import { handleDemoMode, handleDemoModeWithPagination } from '../utils/demoModeHelper';
+import { getMockDataByTenant } from '../utils/comprehensiveMockData';
 
 /**
  * Get all departments for a tenant
@@ -71,18 +73,48 @@ export const getDepartments = async (req: Request, res: Response) => {
       });
     }
 
-    const departments = await prisma.department.findMany({
-      where: { tenantId: req.tenantId },
-      include: {
-        branches: { select: { id: true, name: true } },
-        employees: { select: { id: true, firstName: true, lastName: true, email: true } }
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+    const tenantId = req.tenantId;
+    
+    const result = await handleDemoModeWithPagination(
+      req,
+      getMockDataByTenant.departments(tenantId).map(dept => ({
+        ...dept,
+        branches: [{ id: 'demo-branch-1', name: 'Demo Branch' }],
+        employees: [
+          { id: 'demo-emp-1', firstName: 'Demo', lastName: 'Employee1', email: 'demo1@example.com' },
+          { id: 'demo-emp-2', firstName: 'Demo', lastName: 'Employee2', email: 'demo2@example.com' }
+        ]
+      })),
+      async () => {
+        const departments = await prisma.department.findMany({
+          where: { tenantId: req.tenantId },
+          include: {
+            branches: { select: { id: true, name: true } },
+            employees: { select: { id: true, firstName: true, lastName: true, email: true } }
+          },
+          orderBy: { createdAt: 'desc' },
+        });
+
+        const page = parseInt(req.query.page as string) || 1;
+        const limit = parseInt(req.query.limit as string) || 10;
+        
+        return {
+          data: departments,
+          total: departments.length,
+          page,
+          limit
+        };
+      }
+    );
 
     return res.status(200).json({
       status: 'success',
-      data: { departments },
+      data: { departments: result.data },
+      pagination: {
+        total: result.total,
+        page: result.page,
+        limit: result.limit
+      }
     });
   } catch (error) {
     console.error('Get departments error:', error);
